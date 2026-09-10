@@ -22,23 +22,6 @@ export const PosScreen: React.FC<PosScreenProps> = ({ onVentaCompletada }) => {
   const loadProductos = async () => {
     const list = await apiService.getProductos(categoria, search);
     setProductos(list);
-
-    // Si el carrito está vacío en primera carga, inicializar con los 3 productos del Figma
-    if (cart.length === 0 && list.length > 0) {
-      const allProds = await apiService.getProductos();
-      const gaseosa = allProds.find(p => p.nombre.toLowerCase().includes('gaseosa'));
-      const papas = allProds.find(p => p.nombre.toLowerCase().includes('papas'));
-      const agua = allProds.find(p => p.nombre.toLowerCase().includes('agua'));
-
-      const initialCart: CartItem[] = [];
-      if (gaseosa) initialCart.push({ producto: gaseosa, cantidad: 1 });
-      if (papas) initialCart.push({ producto: papas, cantidad: 1 });
-      if (agua) initialCart.push({ producto: agua, cantidad: 1 });
-
-      if (initialCart.length > 0) {
-        setCart(initialCart);
-      }
-    }
   };
 
   const addToCart = (prod: Producto) => {

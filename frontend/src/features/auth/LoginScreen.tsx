@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Logo } from '../../components/shared/Logo';
 import { FigmaBackground } from '../../components/shared/FigmaBackground';
 import { supabaseApi, isSupabaseConfigured } from '../../services/supabaseClient';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Download, Smartphone, X } from 'lucide-react';
 
 interface LoginScreenProps {
   onLoginSuccess: () => void;
@@ -11,11 +11,51 @@ interface LoginScreenProps {
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   // En móvil inicia siempre en 'inicio' (Splash) y al dar clic pasa a 'login'
   const [mobileMode, setMobileMode] = useState<'inicio' | 'login'>('inicio');
-  const [usuario, setUsuario] = useState('admin@ohanaclub.pe');
-  const [password, setPassword] = useState('admin123');
+  const [usuario, setUsuario] = useState('');
+  const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Estado para PWA (Descarga como acceso directo en celulares)
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBanner, setShowInstallBanner] = useState<boolean>(true);
+  const [isInstalled, setIsInstalled] = useState<boolean>(false);
+  const [showIosInstructions, setShowIosInstructions] = useState<boolean>(false);
+
+  useEffect(() => {
+    // Comprobar si ya está instalada o en modo standalone
+    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
+      setIsInstalled(true);
+    }
+
+    const handleBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setIsInstalled(true);
+        setShowInstallBanner(false);
+      }
+      setDeferredPrompt(null);
+    } else {
+      const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+      if (isIos) {
+        setShowIosInstructions(true);
+      } else {
+        alert('Para descargar el acceso directo en tu celular:\n1. Toca el menú de 3 puntos en tu navegador (⋮)\n2. Elige "Añadir a pantalla de inicio" o "Instalar aplicación".');
+      }
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,7 +69,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         setLoading(false);
         onLoginSuccess();
       } else {
-        // Validación local si no hay configuración de base de datos en .env
+        // Fallback local si no hay conexión
         const cleanUser = usuario.trim().toLowerCase();
         let validUser: any = null;
 
@@ -99,8 +139,42 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
         {/* 2. PANTALLA LOGIN (REGISTRO) - Tarjeta Azul con Altura y Espaciado Amplios */}
         {mobileMode === 'login' && (
-          <div className="w-full min-h-screen flex flex-col justify-between items-center px-5 pt-12 pb-6 animate-fadeIn">
+          <div className="w-full min-h-screen flex flex-col justify-between items-center px-5 pt-8 pb-6 animate-fadeIn">
             
+            {/* Banner de Descarga / Acceso Directo para Móvil */}
+            {showInstallBanner && !isInstalled && (
+              <div className="w-full max-w-[350px] mb-2 bg-gradient-to-r from-blue-900/90 to-indigo-900/90 border border-[#D8F600]/40 rounded-2xl p-3 shadow-lg flex items-center justify-between gap-2.5 backdrop-blur-md animate-fadeIn">
+                <div className="flex items-center gap-2.5 overflow-hidden">
+                  <div className="w-9 h-9 rounded-xl bg-[#D8F600] text-[#0F2276] flex items-center justify-center shrink-0 shadow-xs">
+                    <Smartphone className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-[#D8F600] leading-tight">¿Usas celular?</p>
+                    <p className="text-[10.5px] text-blue-100 font-medium leading-tight mt-0.5">
+                      Descarga el acceso directo a tu pantalla
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    onClick={handleInstallClick}
+                    className="bg-[#D8F600] hover:bg-[#c9e600] active:scale-95 text-[#0F2276] text-[11px] font-black px-2.5 py-1.5 rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Instalar</span>
+                  </button>
+                  <button
+                    onClick={() => setShowInstallBanner(false)}
+                    className="text-blue-300 hover:text-white p-1 rounded-lg transition cursor-pointer"
+                    title="Descartar"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Contenedor central con la tarjeta azul y Logo solapado */}
             <div className="w-full max-w-[350px] my-auto flex flex-col items-center">
               
@@ -130,7 +204,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                       onChange={(e) => setUsuario(e.target.value)}
                       required
                       className="w-full h-12 bg-white text-slate-900 text-sm font-semibold px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D8F600] shadow-inner"
-                      placeholder="admin@ohanaclub.pe"
+                      placeholder="admin@ohanaclub.pe o staff"
                     />
                   </div>
 
@@ -144,7 +218,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       className="w-full h-12 bg-white text-slate-900 text-sm font-semibold px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D8F600] tracking-widest shadow-inner"
-                      placeholder="••••••••••••"
+                      placeholder="Ingresa tu contraseña"
                     />
                   </div>
 
@@ -214,9 +288,21 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         {/* Header Superior Desktop */}
         <div className="flex items-center justify-between w-full">
           <Logo size="md" />
-          <span className="text-xs lg:text-sm font-bold text-white/90 bg-white/10 px-4 py-2 rounded-full backdrop-blur-xs border border-white/20">
-            Terminal de Control • Ohana Club
-          </span>
+          <div className="flex items-center gap-3">
+            {!isInstalled && (
+              <button
+                onClick={handleInstallClick}
+                className="text-xs font-bold text-[#0F2276] bg-[#D8F600] hover:bg-[#c9e600] px-3.5 py-1.5 rounded-full shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+                title="Descargar Acceso Directo"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Instalar App</span>
+              </button>
+            )}
+            <span className="text-xs lg:text-sm font-bold text-white/90 bg-white/10 px-4 py-2 rounded-full backdrop-blur-xs border border-white/20">
+              Terminal de Control • Ohana Club
+            </span>
+          </div>
         </div>
 
         {/* Contenido Principal en 2 Columnas */}
@@ -286,7 +372,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                     onChange={(e) => setUsuario(e.target.value)}
                     required
                     className="w-full h-13 bg-white text-slate-900 text-base font-semibold px-5 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#D8F600] shadow-inner"
-                    placeholder="admin@ohanaclub.pe"
+                    placeholder="ej: admin@ohanaclub.pe o staff"
                   />
                 </div>
 
@@ -300,7 +386,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     className="w-full h-13 bg-white text-slate-900 text-base font-semibold px-5 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#D8F600] tracking-widest shadow-inner"
-                    placeholder="••••••••••••"
+                    placeholder="Ingresa tu contraseña"
                   />
                 </div>
 
@@ -358,6 +444,38 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         </div>
 
       </div>
+
+      {/* Modal de Instrucciones para iPhone / iPad Safari */}
+      {showIosInstructions && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 animate-fadeIn select-none">
+          <div className="bg-white text-slate-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-slate-100 space-y-4 text-center">
+            <div className="w-12 h-12 bg-blue-100 text-[#1638BF] rounded-full mx-auto flex items-center justify-center">
+              <Smartphone className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-black text-slate-900">Instalar en iPhone / iPad</h3>
+            <div className="space-y-2.5 text-xs text-left text-slate-600 bg-slate-50 p-4 rounded-2xl">
+              <p className="flex items-center gap-2 font-medium">
+                <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-[10px]">1</span>
+                Toca el botón <strong>Compartir (⬆️)</strong> en Safari.
+              </p>
+              <p className="flex items-center gap-2 font-medium">
+                <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-[10px]">2</span>
+                Desliza y pulsa <strong>"Añadir a pantalla de inicio"</strong>.
+              </p>
+              <p className="flex items-center gap-2 font-medium">
+                <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-[10px]">3</span>
+                Listo, abrirás Ohana Club en pantalla completa.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowIosInstructions(false)}
+              className="w-full bg-[#1638BF] hover:bg-blue-700 text-white font-bold text-xs py-3 rounded-xl shadow-md transition cursor-pointer"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );

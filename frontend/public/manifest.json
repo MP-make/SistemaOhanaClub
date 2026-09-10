@@ -1,0 +1,25 @@
+{
+  "name": "Ohana Club - Sistema de Gestión",
+  "short_name": "Ohana Club",
+  "description": "Sistema de gestión para reservas de canchas, eventos y minimarket POS de Ohana Sports Club",
+  "start_url": "/login",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1638BF",
+  "theme_color": "#1638BF",
+  "icons": [
+    {
+      "src": "/iconos/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

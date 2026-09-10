@@ -17,8 +17,7 @@ export const InventarioScreen: React.FC<InventarioScreenProps> = ({ onNewReserva
   }, [categoria, search]);
 
   const loadProductos = async () => {
-    // Si categoria es 'bebidas' y search está vacío, cargar los productos representativos de Figma (o por categoría)
-    const list = await apiService.getProductos(categoria === 'todos' ? undefined : (search ? categoria : undefined), search);
+    const list = await apiService.getProductos(categoria, search);
     setProductos(list);
   };
 

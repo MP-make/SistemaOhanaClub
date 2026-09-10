@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { User, Calendar, Clock, Sun, Moon, Sparkles, ChevronDown } from 'lucide-react';
 import { ZonaTipo, TarifaTipo, Reserva } from '../../types';
 import { apiService } from '../../services/api';
@@ -15,31 +15,21 @@ export const NuevaReservaScreen: React.FC<NuevaReservaScreenProps> = ({
   onCancel
 }) => {
   const [zona, setZona] = useState<ZonaTipo>(initialZona);
-  const [clienteNombre, setClienteNombre] = useState('Juan Perez');
-  const [clienteTelefono, setClienteTelefono] = useState('999888777');
-  const [clienteEmpresa, setClienteEmpresa] = useState('Tech Solutions');
-  const [tipoEvento, setTipoEvento] = useState('Evento Corporativo');
-  const [fecha, setFecha] = useState('2026-05-23');
+  const [clienteNombre, setClienteNombre] = useState('');
+  const [clienteTelefono, setClienteTelefono] = useState('');
+  const [clienteEmpresa, setClienteEmpresa] = useState('');
+  const [tipoEvento, setTipoEvento] = useState('Cumpleaños');
+  const [fecha, setFecha] = useState(() => new Date().toISOString().split('T')[0]);
   const [horaInicio, setHoraInicio] = useState('16:00');
   const [horaFin, setHoraFin] = useState('18:00');
   const [tarifaTipo, setTarifaTipo] = useState<TarifaTipo>('DIURNA');
-  const [presupuestoEvento, setPresupuestoEvento] = useState<number>(2000.00);
+  const [presupuestoEvento, setPresupuestoEvento] = useState<number>(1000);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Switch defaults when changing zona
   const handleSwitchZona = (newZona: ZonaTipo) => {
     setZona(newZona);
     setErrorMsg(null);
-    if (newZona === 'EVENTOS') {
-      setClienteNombre('Tech Solutions');
-      setHoraInicio('19:00');
-      setHoraFin('23:00');
-    } else {
-      setClienteNombre('Juan Perez');
-      setHoraInicio('16:00');
-      setHoraFin('18:00');
-      setTarifaTipo('DIURNA');
-    }
   };
 
   // Live calculated amounts (Principio UX: Feedback Inmediato)
@@ -55,12 +45,18 @@ export const NuevaReservaScreen: React.FC<NuevaReservaScreenProps> = ({
     e.preventDefault();
     setErrorMsg(null);
 
+    const nombreFinal = zona === 'CANCHA' ? clienteNombre.trim() : clienteEmpresa.trim();
+    if (!nombreFinal) {
+      setErrorMsg('Por favor ingresa el nombre del cliente o empresa responsable.');
+      return;
+    }
+
     try {
       const nueva = await apiService.createReserva({
         zona,
-        clienteNombre: zona === 'CANCHA' ? clienteNombre : clienteEmpresa,
-        clienteTelefono,
-        clienteEmpresa: zona === 'EVENTOS' ? clienteEmpresa : undefined,
+        clienteNombre: nombreFinal,
+        clienteTelefono: clienteTelefono.trim(),
+        clienteEmpresa: zona === 'EVENTOS' ? clienteEmpresa.trim() : undefined,
         tipoEvento: zona === 'CANCHA' ? 'Reserva' : tipoEvento,
         fecha,
         horaInicio,
@@ -130,7 +126,7 @@ export const NuevaReservaScreen: React.FC<NuevaReservaScreenProps> = ({
                       value={clienteNombre}
                       onChange={(e) => setClienteNombre(e.target.value)}
                       required
-                      placeholder="Juan Perez"
+                      placeholder="ej: Carlos Mendoza"
                       className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs md:text-sm font-semibold pl-9 pr-4 py-2.5 md:py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-ohana-blue"
                     />
                     <User className="w-4 h-4 text-slate-400 absolute left-3 top-3 md:top-3.5" />
@@ -139,7 +135,7 @@ export const NuevaReservaScreen: React.FC<NuevaReservaScreenProps> = ({
               ) : (
                 <div>
                   <label className="block text-xs md:text-sm font-bold text-slate-700 mb-1">
-                    Cliente / Empresa
+                    Cliente / Empresa Responsable
                   </label>
                   <div className="relative">
                     <input
@@ -147,7 +143,7 @@ export const NuevaReservaScreen: React.FC<NuevaReservaScreenProps> = ({
                       value={clienteEmpresa}
                       onChange={(e) => setClienteEmpresa(e.target.value)}
                       required
-                      placeholder="Tech Solutions"
+                      placeholder="ej: Empresa / Familia"
                       className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs md:text-sm font-semibold px-4 py-2.5 md:py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-ohana-orange"
                     />
                   </div>
@@ -163,7 +159,7 @@ export const NuevaReservaScreen: React.FC<NuevaReservaScreenProps> = ({
                   type="tel"
                   value={clienteTelefono}
                   onChange={(e) => setClienteTelefono(e.target.value)}
-                  placeholder="999888777"
+                  placeholder="ej: 987654321"
                   className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs md:text-sm font-semibold px-4 py-2.5 md:py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-ohana-blue"
                 />
               </div>
@@ -173,7 +169,7 @@ export const NuevaReservaScreen: React.FC<NuevaReservaScreenProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
               <div>
                 <label className="block text-xs md:text-sm font-bold text-slate-700 mb-1">
-                  Fecha
+                  Fecha de Reserva
                 </label>
                 <div className="relative">
                   <input
@@ -277,8 +273,8 @@ export const NuevaReservaScreen: React.FC<NuevaReservaScreenProps> = ({
                       onChange={(e) => setTipoEvento(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs md:text-sm font-semibold px-4 py-2.5 md:py-3 rounded-xl appearance-none focus:outline-none focus:ring-2 focus:ring-ohana-orange"
                     >
-                      <option value="Evento Corporativo">Evento Corporativo</option>
                       <option value="Cumpleaños">Cumpleaños</option>
+                      <option value="Evento Corporativo">Evento Corporativo</option>
                       <option value="Fiesta Privada">Fiesta Privada</option>
                       <option value="Torneo Deportivo">Torneo Deportivo</option>
                     </select>
@@ -295,9 +291,11 @@ export const NuevaReservaScreen: React.FC<NuevaReservaScreenProps> = ({
                     <input
                       type="number"
                       step="50"
+                      min="100"
                       value={presupuestoEvento}
                       onChange={(e) => setPresupuestoEvento(Number(e.target.value))}
                       required
+                      placeholder="ej: 1500"
                       className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs md:text-sm font-bold px-4 py-2.5 md:py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-ohana-orange"
                     />
                     <span className="absolute right-3 top-2.5 md:top-3 text-xs font-bold text-slate-400">PEN</span>
@@ -363,7 +361,7 @@ export const NuevaReservaScreen: React.FC<NuevaReservaScreenProps> = ({
               </button>
             </div>
 
-            {/* Leyenda de pie según Figma */}
+            {/* Leyenda de pie */}
             <div className="text-[11px] text-center text-slate-400 font-medium pt-1">
               {zona === 'CANCHA' ? (
                 <div className="flex justify-between px-2">
@@ -380,4 +378,3 @@ export const NuevaReservaScreen: React.FC<NuevaReservaScreenProps> = ({
     </div>
   );
 };
-
