@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Azules de la tarjeta y header */
+  --ohana-blue-bright: #3240FF;
+  --ohana-blue-dark: #2131B9;
+  
+  /* Sombra inspeccionada */
+  --ohana-card-shadow: 0px 4px 21.1px rgba(0, 0, 0, 0.25);
+}
+
+@layer base {
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Tarjeta flotante de Login (Rectangle 28 de Figma) */
+.login-card {
+  width: 100%;
+  max-width: 329px;
+  border-radius: 25px;
+  background: linear-gradient(180deg, #3240FF 0%, #2131B9 95%, #3240FF 100%);
+  box-shadow: var(--ohana-card-shadow);
+}
+
+/* Smooth mobile scroll */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
