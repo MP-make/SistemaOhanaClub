@@ -408,38 +408,51 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
           </div>
 
           {/* Panel Resumen del Día Seleccionado (4 cols) */}
-          <div className="col-span-12 lg:col-span-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 space-y-4">
-            <div>
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Detalle de Jornada</span>
-              <h3 className="text-lg font-black text-slate-900 mt-0.5">Jueves, {selectedDay} de Mayo 2026</h3>
-            </div>
+          {(() => {
+            const dayReservas = reservas.filter(r => {
+              const parts = r.fecha.split('-');
+              return parseInt(parts[2] || '0', 10) === selectedDay;
+            });
+            const totalReservasDia = dayReservas.length;
+            const totalMontoEstimado = dayReservas.reduce((acc, r) => acc + (r.montoTotal || 0), 0);
 
-            <div className="space-y-3">
-              <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100 flex justify-between items-center">
-                <span className="text-xs font-bold text-slate-700">Total Reservas del Día</span>
-                <span className="text-base font-black text-[#1638BF]">5 activas</span>
+            return (
+              <div className="col-span-12 lg:col-span-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 space-y-4">
+                <div>
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Detalle de Jornada</span>
+                  <h3 className="text-lg font-black text-slate-900 mt-0.5">Día {selectedDay} de {months[monthIndex]}</h3>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100 flex justify-between items-center">
+                    <span className="text-xs font-bold text-slate-700">Total Reservas del Día</span>
+                    <span className="text-base font-black text-[#1638BF]">{totalReservasDia} activas</span>
+                  </div>
+
+                  <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100 flex justify-between items-center">
+                    <span className="text-xs font-bold text-slate-700">Canchas / Eventos</span>
+                    <span className="text-base font-black text-slate-900">
+                      {dayReservas.filter(r => r.zona === 'CANCHA').length} Cancha • {dayReservas.filter(r => r.zona === 'EVENTOS').length} Eventos
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100 flex justify-between items-center">
+                    <span className="text-xs font-bold text-slate-700">Recaudación Estimada</span>
+                    <span className="text-base font-black text-emerald-600">S/ {totalMontoEstimado.toFixed(2)}</span>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    onClick={() => onNewReserva('CANCHA')}
+                    className="w-full bg-[#D8F600] hover:bg-[#c9e600] text-[#0F2276] font-bold text-xs py-3 rounded-xl shadow-xs transition cursor-pointer text-center block"
+                  >
+                    + Reservar en este día
+                  </button>
+                </div>
               </div>
-
-              <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100 flex justify-between items-center">
-                <span className="text-xs font-bold text-slate-700">Horas Ocupadas</span>
-                <span className="text-base font-black text-slate-900">12 Horas</span>
-              </div>
-
-              <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100 flex justify-between items-center">
-                <span className="text-xs font-bold text-slate-700">Recaudación Estimada</span>
-                <span className="text-base font-black text-emerald-600">S/ 1,390.00</span>
-              </div>
-            </div>
-
-            <div className="pt-2">
-              <button
-                onClick={() => onNewReserva('CANCHA')}
-                className="w-full bg-[#D8F600] hover:bg-[#c9e600] text-[#0F2276] font-bold text-xs py-3 rounded-xl shadow-xs transition cursor-pointer text-center block"
-              >
-                + Reservar en este día
-              </button>
-            </div>
-          </div>
+            );
+          })()}
 
         </div>
 

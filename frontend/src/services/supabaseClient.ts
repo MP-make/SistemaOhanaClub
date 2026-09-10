@@ -75,7 +75,7 @@ export const supabaseApi = {
 
   async updateStock(productoId: string, delta: number) {
     if (!isSupabaseConfigured()) return null;
-    const getUrl = `${SUPABASE_URL}/rest/v1/productos?id=eq.${productoId}&select=stock_actual`;
+    const getUrl = `${SUPABASE_URL}/rest/v1/productos?id=eq.${productoId}&select=*`;
     const resGet = await fetch(getUrl, { headers: getHeaders() });
     if (!resGet.ok) return null;
     const prods = await resGet.json();
@@ -93,7 +93,83 @@ export const supabaseApi = {
       return null;
     }
     const updated = await resPatch.json();
-    return updated[0];
+    return (updated && updated[0]) ? updated[0] : { ...prods[0], stock_actual: nuevoStock };
+  },
+
+  async createProducto(prod: {
+    nombre: string;
+    categoria_id: string;
+    presentacion?: string;
+    precio_unitario: number;
+    stock_actual: number;
+    stock_minimo?: number;
+    imagen_url?: string;
+  }) {
+    if (!isSupabaseConfigured()) return null;
+    const url = `${SUPABASE_URL}/rest/v1/productos`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({
+        nombre: prod.nombre,
+        categoria_id: prod.categoria_id,
+        presentacion: prod.presentacion || '',
+        precio_unitario: prod.precio_unitario,
+        stock_actual: prod.stock_actual,
+        stock_minimo: prod.stock_minimo || 10,
+        imagen_url: prod.imagen_url || '',
+        activo: true
+      })
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error('Error createProducto Supabase:', errText);
+      throw new Error(`Error al crear producto: ${errText}`);
+    }
+    const data = await res.json();
+    return data[0];
+  },
+
+  async updateProducto(productoId: string, prod: {
+    nombre?: string;
+    categoria_id?: string;
+    presentacion?: string;
+    precio_unitario?: number;
+    stock_actual?: number;
+    stock_minimo?: number;
+    imagen_url?: string;
+  }) {
+    if (!isSupabaseConfigured()) return null;
+    const url = `${SUPABASE_URL}/rest/v1/productos?id=eq.${productoId}`;
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify(prod)
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error('Error updateProducto Supabase:', errText);
+      throw new Error(`Error al actualizar producto: ${errText}`);
+    }
+    const data = await res.json();
+    return data[0];
+  },
+
+  async deleteProducto(productoId: string) {
+    if (!isSupabaseConfigured()) return null;
+    // Marcamos como inactivo para preservar integridad con ventas
+    const url = `${SUPABASE_URL}/rest/v1/productos?id=eq.${productoId}`;
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify({ activo: false })
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error('Error deleteProducto Supabase:', errText);
+      throw new Error(`Error al eliminar producto: ${errText}`);
+    }
+    return true;
   },
 
   // 3. RESERVAS

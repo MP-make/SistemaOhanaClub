@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Logo } from '../../components/shared/Logo';
 import { FigmaBackground } from '../../components/shared/FigmaBackground';
 import { supabaseApi, isSupabaseConfigured } from '../../services/supabaseClient';
-import { AlertCircle, Download, Smartphone, X } from 'lucide-react';
+import { AlertCircle, Download, Smartphone, X, Laptop, CheckCircle2, Info } from 'lucide-react';
 
 interface LoginScreenProps {
   onLoginSuccess: () => void;
@@ -17,11 +17,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Estado para PWA (Descarga como acceso directo en celulares)
+  // Estado para PWA (Descarga como acceso directo en celulares y PC)
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState<boolean>(true);
   const [isInstalled, setIsInstalled] = useState<boolean>(false);
-  const [showIosInstructions, setShowIosInstructions] = useState<boolean>(false);
+  const [showInstallModal, setShowInstallModal] = useState<boolean>(false);
+  const [installTab, setInstallTab] = useState<'android' | 'ios' | 'desktop'>('android');
+  const [infoToast, setInfoToast] = useState<string | null>(null);
 
   useEffect(() => {
     // Comprobar si ya está instalada o en modo standalone
@@ -29,31 +31,53 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       setIsInstalled(true);
     }
 
+    if ((window as any).deferredPWAInstallPrompt) {
+      setDeferredPrompt((window as any).deferredPWAInstallPrompt);
+    }
+
     const handleBeforeInstall = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
+      (window as any).deferredPWAInstallPrompt = e;
+    };
+
+    const handlePwaReady = () => {
+      if ((window as any).deferredPWAInstallPrompt) {
+        setDeferredPrompt((window as any).deferredPWAInstallPrompt);
+      }
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+    window.addEventListener('pwa-install-ready', handlePwaReady);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+      window.removeEventListener('pwa-install-ready', handlePwaReady);
+    };
   }, []);
 
   const handleInstallClick = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
+    const promptEvent = (window as any).deferredPWAInstallPrompt || deferredPrompt;
+    if (promptEvent) {
+      promptEvent.prompt();
+      const { outcome } = await promptEvent.userChoice;
       if (outcome === 'accepted') {
         setIsInstalled(true);
         setShowInstallBanner(false);
       }
       setDeferredPrompt(null);
+      (window as any).deferredPWAInstallPrompt = null;
     } else {
+      // Detectar dispositivo inicial
       const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
       if (isIos) {
-        setShowIosInstructions(true);
+        setInstallTab('ios');
+      } else if (isMobile) {
+        setInstallTab('android');
       } else {
-        alert('Para descargar el acceso directo en tu celular:\n1. Toca el menú de 3 puntos en tu navegador (⋮)\n2. Elige "Añadir a pantalla de inicio" o "Instalar aplicación".');
+        setInstallTab('desktop');
       }
+      setShowInstallModal(true);
     }
   };
 
@@ -235,7 +259,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                     </label>
                     <button
                       type="button"
-                      onClick={() => alert('Para reestablecer su contraseña, solicítelo al administrador del local.')}
+                      onClick={() => setInfoToast('Para restablecer su contraseña, solicítelo al administrador del local en caja.')}
                       className="text-white hover:underline cursor-pointer"
                     >
                       Olvidaste contraseña
@@ -259,7 +283,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                   <p className="text-[11px] text-white/90">
                     ¿No tienes una cuenta?{' '}
                     <span 
-                      onClick={() => alert('Para registrar un nuevo usuario staff, solicítelo en caja central.')}
+                      onClick={() => setInfoToast('Para registrar un nuevo usuario staff, solicítelo al administrador.')}
                       className="font-bold underline text-white cursor-pointer hover:text-[#D8F600]"
                     >
                       Contacta al Admin
@@ -292,11 +316,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             {!isInstalled && (
               <button
                 onClick={handleInstallClick}
-                className="text-xs font-bold text-[#0F2276] bg-[#D8F600] hover:bg-[#c9e600] px-3.5 py-1.5 rounded-full shadow-sm transition flex items-center gap-1.5 cursor-pointer"
-                title="Descargar Acceso Directo"
+                className="text-xs font-bold text-[#0F2276] bg-[#D8F600] hover:bg-[#c9e600] active:scale-95 px-4 py-2 rounded-full shadow-md transition flex items-center gap-2 cursor-pointer border border-[#D8F600]"
+                title="Descargar Acceso Directo / Instalar"
               >
-                <Download className="w-3.5 h-3.5" />
-                <span>Instalar App</span>
+                <Download className="w-4 h-4" />
+                <span>Instalar App / Acceso Directo</span>
               </button>
             )}
             <span className="text-xs lg:text-sm font-bold text-white/90 bg-white/10 px-4 py-2 rounded-full backdrop-blur-xs border border-white/20">
@@ -402,7 +426,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                   </label>
                   <button
                     type="button"
-                    onClick={() => alert('Para reestablecer su contraseña, solicítelo al administrador del local.')}
+                    onClick={() => setInfoToast('Para restablecer su contraseña, solicítelo al administrador del local en caja.')}
                     className="text-white hover:underline cursor-pointer"
                   >
                     Olvidaste contraseña
@@ -424,7 +448,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 <p className="text-xs text-white/90">
                   ¿No tienes una cuenta?{' '}
                   <span 
-                    onClick={() => alert('Para registrar un nuevo usuario staff, solicítelo en caja central.')}
+                    onClick={() => setInfoToast('Para registrar un nuevo usuario staff, solicítelo al administrador.')}
                     className="font-bold underline text-white cursor-pointer hover:text-[#D8F600]"
                   >
                     Contacta al Administrador
@@ -445,35 +469,153 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
       </div>
 
-      {/* Modal de Instrucciones para iPhone / iPad Safari */}
-      {showIosInstructions && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 animate-fadeIn select-none">
-          <div className="bg-white text-slate-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-slate-100 space-y-4 text-center">
-            <div className="w-12 h-12 bg-blue-100 text-[#1638BF] rounded-full mx-auto flex items-center justify-center">
-              <Smartphone className="w-6 h-6" />
-            </div>
-            <h3 className="text-base font-black text-slate-900">Instalar en iPhone / iPad</h3>
-            <div className="space-y-2.5 text-xs text-left text-slate-600 bg-slate-50 p-4 rounded-2xl">
-              <p className="flex items-center gap-2 font-medium">
-                <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-[10px]">1</span>
-                Toca el botón <strong>Compartir (⬆️)</strong> en Safari.
-              </p>
-              <p className="flex items-center gap-2 font-medium">
-                <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-[10px]">2</span>
-                Desliza y pulsa <strong>"Añadir a pantalla de inicio"</strong>.
-              </p>
-              <p className="flex items-center gap-2 font-medium">
-                <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-[10px]">3</span>
-                Listo, abrirás Ohana Club en pantalla completa.
-              </p>
-            </div>
+      {/* Modal Moderno y Visual de Instalación / Acceso Directo */}
+      {showInstallModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-fadeIn select-none">
+          <div className="bg-white text-slate-900 w-full max-w-md rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-5 relative">
+            
+            {/* Botón Cerrar */}
             <button
-              onClick={() => setShowIosInstructions(false)}
-              className="w-full bg-[#1638BF] hover:bg-blue-700 text-white font-bold text-xs py-3 rounded-xl shadow-md transition cursor-pointer"
+              onClick={() => setShowInstallModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 p-2 rounded-full hover:bg-slate-100 transition cursor-pointer"
             >
-              Entendido
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Header del Modal */}
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-md shrink-0">
+                <Download className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-slate-900 leading-tight">Instalar Ohana Club</h3>
+                <p className="text-xs text-slate-500">Acceso rápido a pantalla completa sin barras</p>
+              </div>
+            </div>
+
+            {/* Pestañas de Dispositivos */}
+            <div className="flex bg-slate-100 p-1 rounded-2xl gap-1">
+              <button
+                type="button"
+                onClick={() => setInstallTab('android')}
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                  installTab === 'android' ? 'bg-white text-[#1638BF] shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Smartphone className="w-3.5 h-3.5" />
+                <span>Android</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setInstallTab('ios')}
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                  installTab === 'ios' ? 'bg-white text-[#1638BF] shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span>🍏 iOS Safari</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setInstallTab('desktop')}
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                  installTab === 'desktop' ? 'bg-white text-[#1638BF] shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Laptop className="w-3.5 h-3.5" />
+                <span>PC / Mac</span>
+              </button>
+            </div>
+
+            {/* Contenido de la Guía según pestaña */}
+            <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-3 text-xs text-slate-700">
+              {installTab === 'android' && (
+                <>
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-black flex items-center justify-center text-[10px] shrink-0 mt-0.5">1</span>
+                    <p>Abre esta página en <strong>Google Chrome</strong> en tu celular.</p>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-black flex items-center justify-center text-[10px] shrink-0 mt-0.5">2</span>
+                    <p>Toca el menú de <strong>tres puntos (⋮)</strong> en la esquina superior derecha.</p>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-black flex items-center justify-center text-[10px] shrink-0 mt-0.5">3</span>
+                    <p>Selecciona <strong>"Instalar aplicación"</strong> o <strong>"Añadir a la pantalla principal"</strong>.</p>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-[#10b981] text-white font-black flex items-center justify-center text-[10px] shrink-0 mt-0.5">✓</span>
+                    <p className="text-emerald-700 font-semibold">¡Listo! Se agregará el icono de Ohana Club a tu pantalla de inicio.</p>
+                  </div>
+                </>
+              )}
+
+              {installTab === 'ios' && (
+                <>
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-black flex items-center justify-center text-[10px] shrink-0 mt-0.5">1</span>
+                    <p>Abre esta página en el navegador <strong>Safari</strong> de tu iPhone o iPad.</p>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-black flex items-center justify-center text-[10px] shrink-0 mt-0.5">2</span>
+                    <p>Toca el botón <strong>Compartir (icono ⬆️ en la barra inferior)</strong>.</p>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-black flex items-center justify-center text-[10px] shrink-0 mt-0.5">3</span>
+                    <p>Desliza hacia abajo y presiona <strong>"Añadir a pantalla de inicio"</strong> (+).</p>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-[#10b981] text-white font-black flex items-center justify-center text-[10px] shrink-0 mt-0.5">✓</span>
+                    <p className="text-emerald-700 font-semibold">¡Listo! Toca "Añadir" arriba a la derecha y se abrirá como app.</p>
+                  </div>
+                </>
+              )}
+
+              {installTab === 'desktop' && (
+                <>
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-black flex items-center justify-center text-[10px] shrink-0 mt-0.5">1</span>
+                    <p>En <strong>Google Chrome</strong> o <strong>Edge</strong>, mira el extremo derecho de la barra de direcciones / URL.</p>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-black flex items-center justify-center text-[10px] shrink-0 mt-0.5">2</span>
+                    <p>Haz clic en el icono de instalación <strong>(⊕ o pantalla con flecha)</strong>.</p>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-black flex items-center justify-center text-[10px] shrink-0 mt-0.5">3</span>
+                    <p>Haz clic en <strong>"Instalar"</strong> en el cuadro emergente.</p>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-[#10b981] text-white font-black flex items-center justify-center text-[10px] shrink-0 mt-0.5">✓</span>
+                    <p className="text-emerald-700 font-semibold">Se abrirá como una aplicación de escritorio independiente.</p>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <button
+              onClick={() => setShowInstallModal(false)}
+              className="w-full bg-[#1638BF] hover:bg-blue-700 active:scale-[0.98] text-white font-black text-xs py-3.5 rounded-2xl shadow-lg transition cursor-pointer flex items-center justify-center gap-2"
+            >
+              <CheckCircle2 className="w-4 h-4 text-[#D8F600]" />
+              <span>Entendido, volver</span>
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Notificación Toast Informativa (reemplazo elegante de alert) */}
+      {infoToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 text-white border border-white/20 px-5 py-3.5 rounded-2xl shadow-2xl text-xs sm:text-sm font-medium flex items-center gap-3 backdrop-blur-md animate-fadeIn max-w-[90vw]">
+          <Info className="w-5 h-5 text-[#D8F600] shrink-0" />
+          <span>{infoToast}</span>
+          <button
+            onClick={() => setInfoToast(null)}
+            className="text-slate-400 hover:text-white ml-2 p-1 rounded-lg transition cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 

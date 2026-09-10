@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { LogOut } from 'lucide-react';
-import { ScreenType } from '../../types';
+import { ScreenType, Reserva } from '../../types';
+import { apiService, localStore } from '../../services/api';
 
 interface DashboardScreenProps {
   onNavigate: (screen: ScreenType) => void;
@@ -9,6 +10,39 @@ interface DashboardScreenProps {
 }
 
 export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate, onNewReserva, onLogout }) => {
+  const [reservasCount, setReservasCount] = useState(0);
+  const [ventasTotal, setVentasTotal] = useState(0);
+  const [ingresosTotal, setIngresosTotal] = useState(0);
+  const [canchasCount, setCanchasCount] = useState(0);
+  const [eventosCount, setEventosCount] = useState(0);
+  const [ticketsCount, setTicketsCount] = useState(0);
+  const [alquileresTotal, setAlquileresTotal] = useState(0);
+  const [todayReservas, setTodayReservas] = useState<Reserva[]>([]);
+
+  useEffect(() => {
+    const loadData = async () => {
+      const list = await apiService.getReservas();
+      const ventas = localStore.getVentas();
+      
+      setReservasCount(list.length);
+      const canchas = list.filter(r => r.zona === 'CANCHA');
+      const eventos = list.filter(r => r.zona === 'EVENTOS');
+      setCanchasCount(canchas.length);
+      setEventosCount(eventos.length);
+      
+      const totalAlq = list.reduce((acc, r) => acc + (r.adelanto || 0), 0);
+      setAlquileresTotal(totalAlq);
+
+      const totalV = ventas.reduce((acc, v) => acc + (v.total || 0), 0);
+      setVentasTotal(totalV);
+      setTicketsCount(ventas.length);
+
+      setIngresosTotal(totalAlq + totalV);
+      setTodayReservas(list.slice(0, 4));
+    };
+    loadData();
+  }, []);
+
   const quickActions = [
     {
       id: 'nueva_reserva',
@@ -111,7 +145,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate, on
                     Reservas hoy
                   </span>
                   <span className="text-xl font-black text-[#0F172A] tracking-tight">
-                    8
+                    {reservasCount}
                   </span>
                 </div>
 
@@ -120,7 +154,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate, on
                     Ventas POS
                   </span>
                   <span className="text-[13px] font-black text-[#0F172A] tracking-tight whitespace-nowrap">
-                    S/1,245.00
+                    S/ {ventasTotal.toFixed(2)}
                   </span>
                 </div>
 
@@ -129,7 +163,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate, on
                     Ingresos
                   </span>
                   <span className="text-[13px] font-black text-[#0F172A] tracking-tight whitespace-nowrap">
-                    S/3,860.00
+                    S/ {ingresosTotal.toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -155,10 +189,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate, on
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white rounded-2xl p-5 shadow-xs border border-slate-200/80 flex items-center justify-between hover:shadow-md transition">
             <div>
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Reservas Hoy</p>
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight">8 Activas</h3>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Reservas Totales</p>
+              <h3 className="text-2xl font-black text-slate-900 tracking-tight">{reservasCount} Activas</h3>
               <p className="text-[11px] font-semibold text-emerald-600 mt-1 flex items-center gap-1">
-                <span>●</span> 5 Cancha • 3 Eventos
+                <span>●</span> {canchasCount} Cancha • {eventosCount} Eventos
               </p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-[#1638BF]">
@@ -169,9 +203,9 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate, on
           <div className="bg-white rounded-2xl p-5 shadow-xs border border-slate-200/80 flex items-center justify-between hover:shadow-md transition">
             <div>
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Ventas Minimarket</p>
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight">S/ 1,245.00</h3>
+              <h3 className="text-2xl font-black text-slate-900 tracking-tight">S/ {ventasTotal.toFixed(2)}</h3>
               <p className="text-[11px] font-semibold text-blue-600 mt-1">
-                34 tickets atendidos
+                {ticketsCount} tickets atendidos
               </p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-sky-50 flex items-center justify-center text-[#0284C7]">
@@ -182,9 +216,9 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate, on
           <div className="bg-white rounded-2xl p-5 shadow-xs border border-slate-200/80 flex items-center justify-between hover:shadow-md transition">
             <div>
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Ingresos Alquileres</p>
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight">S/ 2,615.00</h3>
+              <h3 className="text-2xl font-black text-slate-900 tracking-tight">S/ {alquileresTotal.toFixed(2)}</h3>
               <p className="text-[11px] font-semibold text-emerald-600 mt-1">
-                +12% vs semana previa
+                Adelantos cobrados
               </p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-[#EA580C]">
@@ -195,7 +229,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate, on
           <div className="bg-white rounded-2xl p-5 shadow-xs border border-slate-200/80 flex items-center justify-between hover:shadow-md transition bg-gradient-to-br from-white to-blue-50/50">
             <div>
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Ingreso Total Diario</p>
-              <h3 className="text-2xl font-black text-[#1638BF] tracking-tight">S/ 3,860.00</h3>
+              <h3 className="text-2xl font-black text-[#1638BF] tracking-tight">S/ {ingresosTotal.toFixed(2)}</h3>
               <p className="text-[11px] font-semibold text-emerald-600 mt-1">
                 Caja en balance óptimo
               </p>
@@ -247,7 +281,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate, on
           <div className="col-span-12 lg:col-span-5 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-slate-900 tracking-tight">
-                Agenda del Día (Jueves 23)
+                Agenda Reciente
               </h2>
               <button
                 onClick={() => onNavigate('calendario')}
@@ -258,49 +292,22 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate, on
             </div>
 
             <div className="bg-white rounded-2xl p-5 shadow-xs border border-slate-200/80 space-y-3">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-                  <span className="font-bold text-slate-800">08:00 - 10:00</span>
-                  <span className="text-slate-500">• Carlos Mendoza</span>
-                </div>
-                <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md font-bold text-[11px]">
-                  Cancha
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-                  <span className="font-bold text-slate-800">10:00 - 12:00</span>
-                  <span className="text-slate-500">• Tech SAC</span>
-                </div>
-                <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md font-bold text-[11px]">
-                  Cancha
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-orange-500" />
-                  <span className="font-bold text-slate-800">10:00 - 14:00</span>
-                  <span className="text-slate-500">• Familia Ramos</span>
-                </div>
-                <span className="bg-orange-50 text-orange-700 px-2 py-0.5 rounded-md font-bold text-[11px]">
-                  Eventos
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between text-xs pt-1">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-                  <span className="font-bold text-slate-800">14:00 - 16:00</span>
-                  <span className="text-slate-500">• FC Los Amigos</span>
-                </div>
-                <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md font-bold text-[11px]">
-                  Cancha
-                </span>
-              </div>
+              {todayReservas.length === 0 ? (
+                <p className="text-xs text-slate-400 text-center py-6">No hay reservas registradas aún.</p>
+              ) : (
+                todayReservas.map((res) => (
+                  <div key={res.id} className="flex items-center justify-between pb-3 border-b border-slate-100 text-xs last:border-0 last:pb-0">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2.5 h-2.5 rounded-full ${res.zona === 'CANCHA' ? 'bg-blue-600' : 'bg-orange-500'}`} />
+                      <span className="font-bold text-slate-800">{res.horaInicio} - {res.horaFin}</span>
+                      <span className="text-slate-500 truncate max-w-[120px]">• {res.clienteNombre}</span>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-md font-bold text-[11px] ${res.zona === 'CANCHA' ? 'bg-blue-50 text-blue-700' : 'bg-orange-50 text-orange-700'}`}>
+                      {res.zona === 'CANCHA' ? 'Cancha' : 'Eventos'}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
 
             {/* Banner Informativo Directo */}

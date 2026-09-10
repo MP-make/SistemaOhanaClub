@@ -388,6 +388,7 @@ export const apiService = {
             activo: p.activo,
             estado: (Number(p.stock_actual) <= Number(p.stock_minimo || 10)) ? 'Stock Bajo' : 'Disponible'
           }));
+          localStore.saveProductos(mapped);
           return mapped;
         }
       } catch (e) {
@@ -409,10 +410,110 @@ export const apiService = {
     }));
   },
 
+  async createProducto(productoData: Omit<Producto, 'id' | 'estado'>): Promise<Producto> {
+    const nuevoProd: Producto = {
+      ...productoData,
+      id: `prod-${Date.now().toString().slice(-6)}`,
+      estado: (productoData.stockActual <= (productoData.stockMinimo || 10)) ? 'Stock Bajo' : 'Disponible'
+    };
+
+    if (isSupabaseConfigured()) {
+      try {
+        const created = await supabaseApi.createProducto({
+          nombre: productoData.nombre,
+          categoria_id: productoData.categoriaId,
+          presentacion: productoData.presentacion,
+          precio_unitario: productoData.precioUnitario,
+          stock_actual: productoData.stockActual,
+          stock_minimo: productoData.stockMinimo || 10,
+          imagen_url: productoData.imagenUrl
+        });
+        if (created?.id) {
+          nuevoProd.id = created.id;
+        }
+      } catch (e) {
+        console.warn('Error al crear producto en Supabase:', e);
+      }
+    }
+
+    const prods = localStore.getProductos();
+    prods.unshift(nuevoProd);
+    localStore.saveProductos(prods);
+    return nuevoProd;
+  },
+
+  async updateProducto(productoId: string, updates: Partial<Producto>): Promise<Producto> {
+    if (isSupabaseConfigured()) {
+      try {
+        await supabaseApi.updateProducto(productoId, {
+          ...(updates.nombre !== undefined && { nombre: updates.nombre }),
+          ...(updates.categoriaId !== undefined && { categoria_id: updates.categoriaId }),
+          ...(updates.presentacion !== undefined && { presentacion: updates.presentacion }),
+          ...(updates.precioUnitario !== undefined && { precio_unitario: updates.precioUnitario }),
+          ...(updates.stockActual !== undefined && { stock_actual: updates.stockActual }),
+          ...(updates.stockMinimo !== undefined && { stock_minimo: updates.stockMinimo }),
+          ...(updates.imagenUrl !== undefined && { imagen_url: updates.imagenUrl })
+        });
+      } catch (e) {
+        console.warn('Error al actualizar producto en Supabase:', e);
+      }
+    }
+
+    const prods = localStore.getProductos();
+    const index = prods.findIndex(p => p.id === productoId);
+    if (index === -1) throw new Error('Producto no encontrado');
+
+    const updated = {
+      ...prods[index],
+      ...updates,
+      estado: ((updates.stockActual ?? prods[index].stockActual) <= (updates.stockMinimo ?? prods[index].stockMinimo)) ? ('Stock Bajo' as const) : ('Disponible' as const)
+    };
+    prods[index] = updated;
+    localStore.saveProductos(prods);
+    return updated;
+  },
+
+  async deleteProducto(productoId: string): Promise<boolean> {
+    if (isSupabaseConfigured()) {
+      try {
+        await supabaseApi.deleteProducto(productoId);
+      } catch (e) {
+        console.warn('Error al eliminar producto en Supabase:', e);
+      }
+    }
+
+    const prods = localStore.getProductos();
+    const filtered = prods.filter(p => p.id !== productoId);
+    localStore.saveProductos(filtered);
+    return true;
+  },
+
   async updateStock(productoId: string, delta: number): Promise<Producto> {
     if (isSupabaseConfigured()) {
       try {
-        await supabaseApi.updateStock(productoId, delta);
+        const updatedSb = await supabaseApi.updateStock(productoId, delta);
+        if (updatedSb) {
+          const prod: Producto = {
+            id: updatedSb.id,
+            categoriaId: updatedSb.categoria_id,
+            nombre: updatedSb.nombre,
+            presentacion: updatedSb.presentacion || '',
+            precioUnitario: Number(updatedSb.precio_unitario) || 0,
+            stockActual: Number(updatedSb.stock_actual) || 0,
+            stockMinimo: Number(updatedSb.stock_minimo) || 10,
+            imagenUrl: updatedSb.imagen_url,
+            estado: (Number(updatedSb.stock_actual) <= Number(updatedSb.stock_minimo || 10)) ? 'Stock Bajo' : 'Disponible'
+          };
+          const prods = localStore.getProductos();
+          const idx = prods.findIndex(p => p.id === productoId);
+          if (idx !== -1) {
+            prods[idx] = prod;
+          } else {
+            prods.push(prod);
+          }
+          localStore.saveProductos(prods);
+          return prod;
+        }
       } catch (e) {
         console.warn('Fallo updateStock en Supabase:', e);
       }
@@ -420,11 +521,27 @@ export const apiService = {
 
     const prods = localStore.getProductos();
     const prod = prods.find(p => p.id === productoId);
-    if (!prod) throw new Error('Producto no encontrado');
+    if (!prod) {
+      // Si no existe en el store local, crear entrada de fallback
+      const fallbackProd: Producto = {
+        id: productoId,
+        categoriaId: 'otros',
+        nombre: 'Producto',
+        presentacion: '',
+        precioUnitario: 0,
+        stockActual: Math.max(0, delta),
+        stockMinimo: 10,
+        imagenUrl: '',
+        estado: 'Disponible'
+      };
+      prods.push(fallbackProd);
+      localStore.saveProductos(prods);
+      return fallbackProd;
+    }
 
     const nuevoStock = Math.max(0, prod.stockActual + delta);
     prod.stockActual = nuevoStock;
-    prod.estado = nuevoStock <= prod.stockMinimo ? 'Stock Bajo' : 'Disponible';
+    prod.estado = nuevoStock <= (prod.stockMinimo || 10) ? 'Stock Bajo' : 'Disponible';
 
     localStore.saveProductos(prods);
     return prod;

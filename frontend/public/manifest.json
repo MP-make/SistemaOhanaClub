@@ -2,7 +2,7 @@
   "name": "Ohana Club - Sistema de Gestión",
   "short_name": "Ohana Club",
   "description": "Sistema de gestión para reservas de canchas, eventos y minimarket POS de Ohana Sports Club",
-  "start_url": "/login",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
