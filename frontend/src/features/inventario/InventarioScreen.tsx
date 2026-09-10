@@ -382,17 +382,6 @@ export const InventarioScreen: React.FC<InventarioScreenProps> = ({ onNewReserva
 
           </div>
 
-          {/* Botón "+ Nueva reserva" */}
-          <div className="pt-2">
-            <button
-              onClick={onNewReserva}
-              className="w-full bg-[#2442E7] hover:bg-blue-700 active:scale-[0.98] text-white font-bold text-[15px] py-3.5 rounded-xl shadow-md flex items-center justify-center gap-2 transition cursor-pointer"
-            >
-              <Plus className="w-5 h-5 stroke-[2.5]" />
-              <span>Nueva reserva</span>
-            </button>
-          </div>
-
         </div>
       </div>
 

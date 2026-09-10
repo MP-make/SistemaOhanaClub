@@ -9,7 +9,7 @@ interface PosScreenProps {
 
 export const PosScreen: React.FC<PosScreenProps> = ({ onVentaCompletada }) => {
   const [productos, setProductos] = useState<Producto[]>([]);
-  const [categoria, setCategoria] = useState<string>('bebidas');
+  const [categoria, setCategoria] = useState<string>('todos');
   const [search, setSearch] = useState<string>('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [metodoPago, setMetodoPago] = useState<MetodoPago>('EFECTIVO');
@@ -63,34 +63,44 @@ export const PosScreen: React.FC<PosScreenProps> = ({ onVentaCompletada }) => {
   };
 
   const categorias = [
+    { id: 'todos', label: 'Todos' },
     { id: 'bebidas', label: 'Bebidas' },
     { id: 'snacks', label: 'Snacks' },
     { id: 'galletas', label: 'Galletas' },
     { id: 'otros', label: 'Otros' },
   ];
 
-  // Helper para imágenes de productos nítidas en Figma
+  // Helper para imágenes de productos: primero toma la imagen real guardada del producto
   const getProductImage = (prod: Producto) => {
-    const name = prod.nombre.toLowerCase();
-    if (name.includes('agua')) {
-      return 'https://images.unsplash.com/photo-1560023907-5f339617ea30?w=300&auto=format&fit=crop&q=80';
+    if (prod.imagenUrl && prod.imagenUrl.trim().startsWith('http')) {
+      return prod.imagenUrl.trim();
     }
-    if (name.includes('gaseosa') || name.includes('coca')) {
+    const name = (prod.nombre || '').toLowerCase();
+    if (name.includes('agua')) {
+      return 'https://images.unsplash.com/photo-1548839140-29a749e1bc4e?w=300&auto=format&fit=crop&q=80';
+    }
+    if (name.includes('gaseosa') || name.includes('coca') || name.includes('inka')) {
       return 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=300&auto=format&fit=crop&q=80';
     }
-    if (name.includes('energizante') || name.includes('energicente')) {
+    if (name.includes('energizante') || name.includes('monster') || name.includes('red bull')) {
       return 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=300&auto=format&fit=crop&q=80';
     }
-    if (name.includes('isotonica') || name.includes('gatorade')) {
+    if (name.includes('isotonica') || name.includes('sporade') || name.includes('gatorade')) {
       return 'https://images.unsplash.com/photo-1527661591475-527312dd65f5?w=300&auto=format&fit=crop&q=80';
     }
     if (name.includes('papas') || name.includes('lays') || name.includes('doritos')) {
       return 'https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=300&auto=format&fit=crop&q=80';
     }
-    if (name.includes('galletas') || name.includes('oreo')) {
+    if (name.includes('mani') || name.includes('frutos')) {
+      return 'https://images.unsplash.com/photo-1567406899672-849646bda646?w=300&auto=format&fit=crop&q=80';
+    }
+    if (name.includes('galletas') || name.includes('oreo') || name.includes('casino')) {
       return 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=300&auto=format&fit=crop&q=80';
     }
-    return prod.imagenUrl || 'https://images.unsplash.com/photo-1560023907-5f339617ea30?w=300&auto=format&fit=crop&q=80';
+    if (name.includes('cerveza') || name.includes('cusqueña') || name.includes('pilsen')) {
+      return 'https://images.unsplash.com/photo-1608270112445-565d774f2601?w=300&auto=format&fit=crop&q=80';
+    }
+    return prod.imagenUrl || 'https://images.unsplash.com/photo-1548839140-29a749e1bc4e?w=300&auto=format&fit=crop&q=80';
   };
 
   const [carouselIndex, setCarouselIndex] = useState<number>(0);
@@ -143,52 +153,63 @@ export const PosScreen: React.FC<PosScreenProps> = ({ onVentaCompletada }) => {
               })}
             </div>
 
-            {/* Carrusel / Grid de Productos (3 Columnas Figma 1:1) */}
-            <div className="relative mb-4">
-              <button 
-                onClick={handlePrevProduct}
-                className="absolute -left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#1B3BB6] text-white flex items-center justify-center shadow-md z-10 active:scale-95 transition cursor-pointer hover:bg-blue-800"
-                title="Producto anterior"
-              >
-                <ChevronLeft className="w-4 h-4 stroke-[2.5]" />
-              </button>
-
-              <button 
-                onClick={handleNextProduct}
-                className="absolute -right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#1B3BB6] text-white flex items-center justify-center shadow-md z-10 active:scale-95 transition cursor-pointer hover:bg-blue-800"
-                title="Siguiente producto"
-              >
-                <ChevronLeft className="w-4 h-4 stroke-[2.5] rotate-180" />
-              </button>
-
-              <div className="grid grid-cols-3 gap-2 px-1">
-                {(productos.length > 3 ? productos.slice(carouselIndex, carouselIndex + 3) : productos).map((prod) => (
-                  <div
-                    key={prod.id}
-                    className="bg-white border border-[#2563EB] rounded-2xl p-2 shadow-xs flex flex-col justify-between items-center text-center relative"
+            {/* Carrusel / Grid de Productos (Figma 1:1) */}
+            <div className="relative mb-5">
+              {productos.length > 3 && (
+                <>
+                  <button 
+                    onClick={handlePrevProduct}
+                    className="absolute -left-2 top-12 -translate-y-1/2 w-6 h-6 rounded-full bg-[#1638BF] text-white flex items-center justify-center shadow-md z-10 active:scale-90 transition cursor-pointer hover:bg-blue-800"
+                    title="Producto anterior"
                   >
-                    <div className="w-full h-24 flex items-center justify-center overflow-hidden mb-1">
+                    <ChevronLeft className="w-3.5 h-3.5 stroke-[3]" />
+                  </button>
+
+                  <button 
+                    onClick={handleNextProduct}
+                    className="absolute -right-2 top-12 -translate-y-1/2 w-6 h-6 rounded-full bg-[#1638BF] text-white flex items-center justify-center shadow-md z-10 active:scale-90 transition cursor-pointer hover:bg-blue-800"
+                    title="Siguiente producto"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5 stroke-[3] rotate-180" />
+                  </button>
+                </>
+              )}
+
+              <div className="grid grid-cols-3 gap-2 px-0.5">
+                {(productos.length > 3 ? productos.slice(carouselIndex, carouselIndex + 3) : productos).map((prod) => (
+                  <div key={prod.id} className="flex flex-col items-center w-full">
+                    
+                    {/* Caja de Imagen con Borde Azul y Badge de Precio en Esquina Inferior Izquierda */}
+                    <div className="w-full h-28 bg-white border border-[#2563EB] rounded-2xl p-2 flex items-center justify-center relative mb-3 shadow-xs">
                       <img
                         src={getProductImage(prod)}
                         alt={prod.nombre}
-                        className="max-h-full max-w-full object-contain rounded-lg"
+                        className="max-h-full max-w-full object-contain"
                       />
+                      {/* Badge Amarillo de Precio sobre el borde inferior izquierdo */}
+                      <div className="absolute -bottom-2.5 left-1.5 bg-[#D8F600] text-slate-950 font-black text-[11px] px-2 py-0.5 rounded-lg border border-slate-900/15 shadow-xs whitespace-nowrap z-10">
+                        S/{prod.precioUnitario.toFixed(2)}
+                      </div>
                     </div>
 
-                    <div className="bg-[#D8F600] text-slate-950 font-black text-[10.5px] px-2.5 py-0.5 rounded-md -mt-2.5 z-10 shadow-xs">
-                      S/{prod.precioUnitario.toFixed(2)}
+                    {/* Nombre y Presentación debajo de la caja */}
+                    <div className="text-center w-full min-h-[30px] flex flex-col items-center justify-center px-0.5">
+                      <span className="text-[11px] font-bold text-slate-900 leading-tight block truncate w-full">
+                        {prod.nombre}
+                      </span>
+                      <span className="text-[10px] font-semibold text-slate-600 leading-tight block truncate w-full">
+                        {prod.presentacion || 'unidad'}
+                      </span>
                     </div>
 
-                    <span className="text-[11px] font-bold text-slate-800 leading-tight mt-1 h-7 flex items-center justify-center">
-                      {prod.nombre} {prod.presentacion}
-                    </span>
-
+                    {/* Botón Añadir al Carrito Amarillo */}
                     <button
                       onClick={() => addToCart(prod)}
-                      className="w-full bg-[#D8F600] hover:bg-[#c8ea00] active:scale-95 text-slate-950 font-bold text-[10px] py-1.5 rounded-lg shadow-xs mt-1 transition cursor-pointer"
+                      className="w-full bg-[#D8F600] hover:bg-[#c8ea00] active:scale-95 text-slate-950 font-bold text-[10.5px] py-1.5 rounded-xl shadow-xs mt-1.5 transition cursor-pointer border border-slate-900/10 flex items-center justify-center"
                     >
                       Añadir al carrito
                     </button>
+
                   </div>
                 ))}
               </div>

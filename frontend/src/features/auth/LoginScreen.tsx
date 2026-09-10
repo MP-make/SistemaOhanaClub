@@ -307,7 +307,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       {/* ========================================================================= */}
       {/* VISTA DESKTOP & LAPTOP (>= md) - LAYOUT FLUIDO 2 COLUMNAS                 */}
       {/* ========================================================================= */}
-      <div className="hidden md:flex relative z-10 w-full min-h-screen flex-col justify-between p-6 lg:p-10 max-w-[1700px] mx-auto">
+      <div className="hidden md:flex relative z-10 w-full min-h-screen flex-col justify-between p-6 lg:p-10 xl:p-12 max-w-[1800px] mx-auto">
         
         {/* Header Superior Desktop */}
         <div className="flex items-center justify-between w-full">
@@ -316,78 +316,79 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             {!isInstalled && (
               <button
                 onClick={handleInstallClick}
-                className="text-xs font-bold text-[#0F2276] bg-[#D8F600] hover:bg-[#c9e600] active:scale-95 px-4 py-2 rounded-full shadow-md transition flex items-center gap-2 cursor-pointer border border-[#D8F600]"
+                className="text-xs lg:text-sm font-bold text-[#0F2276] bg-[#D8F600] hover:bg-[#c9e600] active:scale-95 px-4 py-2.5 rounded-full shadow-md transition flex items-center gap-2 cursor-pointer border border-[#D8F600]"
                 title="Descargar Acceso Directo / Instalar"
               >
                 <Download className="w-4 h-4" />
                 <span>Instalar App / Acceso Directo</span>
               </button>
             )}
-            <span className="text-xs lg:text-sm font-bold text-white/90 bg-white/10 px-4 py-2 rounded-full backdrop-blur-xs border border-white/20">
+            <span className="text-xs lg:text-sm font-bold text-white/90 bg-white/10 px-4 py-2.5 rounded-full backdrop-blur-xs border border-white/20 shadow-xs">
               Terminal de Control • Ohana Club
             </span>
           </div>
         </div>
 
-        {/* Contenido Principal en 2 Columnas */}
-        <div className="grid grid-cols-12 gap-8 lg:gap-12 items-center my-auto py-6">
+        {/* Contenido Principal en 2 Columnas Balanceadas */}
+        <div className="grid grid-cols-12 gap-8 lg:gap-14 xl:gap-20 items-center my-auto py-4 xl:py-8">
           
           {/* Columna Izquierda: Mascota y Bienvenida Deportiva */}
-          <div className="col-span-12 md:col-span-6 lg:col-span-7 flex flex-col items-center text-center space-y-6">
+          <div className="col-span-12 md:col-span-6 lg:col-span-6 flex flex-col items-center text-center space-y-6 lg:space-y-8">
             <div className="w-full flex justify-center">
               <img
                 src="/images/imagen1.png"
                 alt="Ohana Sports Mascot"
-                className="w-auto max-h-[440px] lg:max-h-[520px] xl:max-h-[580px] object-contain drop-shadow-2xl animate-float"
+                className="w-auto max-h-[380px] lg:max-h-[460px] xl:max-h-[540px] object-contain drop-shadow-2xl animate-float"
               />
             </div>
 
             <div className="space-y-3">
-              <h2 className="text-3xl lg:text-4xl xl:text-5xl font-black text-white tracking-tight">
+              <h2 className="text-3xl lg:text-4xl xl:text-5xl font-black text-white tracking-tight leading-tight">
                 OHANA SPORTS & EVENTS
               </h2>
-              <p className="text-base lg:text-lg text-blue-100/90 font-medium max-w-xl mx-auto leading-relaxed">
+              <p className="text-sm lg:text-base xl:text-lg text-blue-100/90 font-medium max-w-xl mx-auto leading-relaxed">
                 Sistema Integral de Gestión de Alquiler de Canchas, Eventos, Punto de Venta y Control de Caja en Red Local.
               </p>
             </div>
 
             {/* Badges de módulos */}
             <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
-              <span className="bg-white/10 backdrop-blur-xs border border-white/20 text-white text-xs lg:text-sm font-semibold px-4 py-1.5 rounded-full shadow-xs">
+              <span className="bg-white/10 backdrop-blur-xs border border-white/20 text-white text-xs lg:text-sm font-semibold px-4 py-2 rounded-full shadow-xs">
                 ⚽ Canchas Diurna / Nocturna
               </span>
-              <span className="bg-white/10 backdrop-blur-xs border border-white/20 text-white text-xs lg:text-sm font-semibold px-4 py-1.5 rounded-full shadow-xs">
+              <span className="bg-white/10 backdrop-blur-xs border border-white/20 text-white text-xs lg:text-sm font-semibold px-4 py-2 rounded-full shadow-xs">
                 🎉 Zona de Eventos 50%
               </span>
-              <span className="bg-white/10 backdrop-blur-xs border border-white/20 text-white text-xs lg:text-sm font-semibold px-4 py-1.5 rounded-full shadow-xs">
+              <span className="bg-white/10 backdrop-blur-xs border border-white/20 text-white text-xs lg:text-sm font-semibold px-4 py-2 rounded-full shadow-xs">
                 🛒 POS Minimarket
               </span>
-              <span className="bg-white/10 backdrop-blur-xs border border-white/20 text-white text-xs lg:text-sm font-semibold px-4 py-1.5 rounded-full shadow-xs">
+              <span className="bg-white/10 backdrop-blur-xs border border-white/20 text-white text-xs lg:text-sm font-semibold px-4 py-2 rounded-full shadow-xs">
                 📊 Arqueo en Vivo
               </span>
             </div>
           </div>
 
-          {/* Columna Derecha: Tarjeta de Acceso / Login Form Ampliada */}
-          <div className="col-span-12 md:col-span-6 lg:col-span-5 flex flex-col items-center justify-center w-full">
-            {/* Logo Oficial Superior solapado */}
-            <div className="mb-[-42px] relative z-20 scale-120 lg:scale-130">
+          {/* Columna Derecha: Tarjeta de Acceso / Login Form Ampliada y Generosa */}
+          <div className="col-span-12 md:col-span-6 lg:col-span-6 flex flex-col items-center justify-center w-full">
+            
+            {/* Logo Oficial Superior solapado con gran presencia */}
+            <div className="mb-[-50px] lg:mb-[-60px] relative z-20 scale-125 lg:scale-135 xl:scale-145 drop-shadow-2xl">
               <Logo size="xl" />
             </div>
 
-            {/* Tarjeta Azul de Login */}
-            <div className="w-full max-w-lg xl:max-w-xl min-h-[520px] rounded-[32px] p-8 lg:p-12 xl:p-14 pt-16 lg:pt-18 shadow-[0px_20px_60px_rgba(0,0,0,0.45)] bg-[#2136C7] border border-blue-400/30 flex flex-col justify-between">
+            {/* Tarjeta Azul de Login Espaciosa */}
+            <div className="w-full max-w-lg lg:max-w-xl xl:max-w-2xl min-h-[580px] lg:min-h-[620px] rounded-[36px] p-8 sm:p-10 lg:p-12 xl:p-14 pt-20 lg:pt-24 pb-10 shadow-[0px_25px_70px_rgba(0,0,0,0.5)] bg-gradient-to-b from-[#243ce4] to-[#1a2eb7] border border-blue-300/30 flex flex-col justify-between">
               
               {errorMsg && (
-                <div className="mb-4 p-3.5 bg-red-500/90 text-white rounded-2xl text-xs lg:text-sm font-bold flex items-center gap-2.5 animate-shake border border-red-300 shadow-md">
+                <div className="mb-4 p-4 bg-red-500/90 text-white rounded-2xl text-xs lg:text-sm font-bold flex items-center gap-2.5 animate-shake border border-red-300 shadow-md">
                   <AlertCircle className="w-5 h-5 shrink-0" />
                   <span>{errorMsg}</span>
                 </div>
               )}
 
-              <form onSubmit={handleLogin} className="space-y-6 my-auto">
+              <form onSubmit={handleLogin} className="space-y-6 lg:space-y-7 my-auto">
                 <div>
-                  <label className="block text-white text-sm font-semibold mb-2 ml-1">
+                  <label className="block text-white text-sm lg:text-base font-bold mb-2 ml-1">
                     Usuario / Correo
                   </label>
                   <input
@@ -395,13 +396,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                     value={usuario}
                     onChange={(e) => setUsuario(e.target.value)}
                     required
-                    className="w-full h-13 bg-white text-slate-900 text-base font-semibold px-5 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#D8F600] shadow-inner"
+                    className="w-full h-14 lg:h-15 bg-white text-slate-900 text-base lg:text-lg font-semibold px-5 rounded-2xl focus:outline-none focus:ring-3 focus:ring-[#D8F600] shadow-inner transition"
                     placeholder="ej: admin@ohanaclub.pe o staff"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-white text-sm font-semibold mb-2 ml-1">
+                  <label className="block text-white text-sm lg:text-base font-bold mb-2 ml-1">
                     Contraseña
                   </label>
                   <input
@@ -409,47 +410,47 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="w-full h-13 bg-white text-slate-900 text-base font-semibold px-5 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#D8F600] tracking-widest shadow-inner"
+                    className="w-full h-14 lg:h-15 bg-white text-slate-900 text-base lg:text-lg font-semibold px-5 rounded-2xl focus:outline-none focus:ring-3 focus:ring-[#D8F600] tracking-widest shadow-inner transition"
                     placeholder="Ingresa tu contraseña"
                   />
                 </div>
 
-                <div className="flex items-center justify-between text-xs lg:text-sm text-white pt-1">
-                  <label className="flex items-center gap-2 cursor-pointer">
+                <div className="flex items-center justify-between text-sm lg:text-base text-white pt-1">
+                  <label className="flex items-center gap-2.5 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={rememberMe}
                       onChange={(e) => setRememberMe(e.target.checked)}
-                      className="w-4 h-4 rounded bg-white text-[#2136C7] accent-[#D8F600] cursor-pointer"
+                      className="w-4.5 h-4.5 rounded bg-white text-[#2136C7] accent-[#D8F600] cursor-pointer"
                     />
-                    <span>Recordar sesión</span>
+                    <span className="font-medium">Recordar sesión</span>
                   </label>
                   <button
                     type="button"
                     onClick={() => setInfoToast('Para restablecer su contraseña, solicítelo al administrador del local en caja.')}
-                    className="text-white hover:underline cursor-pointer"
+                    className="text-white font-medium hover:underline hover:text-[#D8F600] cursor-pointer transition"
                   >
-                    Olvidaste contraseña
+                    ¿Olvidaste tu contraseña?
                   </button>
                 </div>
 
-                <div className="pt-2">
+                <div className="pt-3">
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full h-13 bg-[#D8F600] hover:bg-[#c8ea00] active:scale-[0.98] text-[#0F2276] font-black text-base rounded-2xl shadow-lg transition flex items-center justify-center cursor-pointer disabled:opacity-75"
+                    className="w-full h-14 lg:h-15 bg-[#D8F600] hover:bg-[#cbf000] active:scale-[0.99] text-[#0F2276] font-black text-base lg:text-lg rounded-2xl shadow-xl transition flex items-center justify-center cursor-pointer disabled:opacity-75"
                   >
                     {loading ? 'Validando en Base de Datos...' : 'Ingresar al Sistema'}
                   </button>
                 </div>
               </form>
 
-              <div className="text-center pt-3">
-                <p className="text-xs text-white/90">
+              <div className="text-center pt-4 border-t border-white/10 mt-4">
+                <p className="text-xs lg:text-sm text-white/90">
                   ¿No tienes una cuenta?{' '}
                   <span 
                     onClick={() => setInfoToast('Para registrar un nuevo usuario staff, solicítelo al administrador.')}
-                    className="font-bold underline text-white cursor-pointer hover:text-[#D8F600]"
+                    className="font-bold underline text-white cursor-pointer hover:text-[#D8F600] transition"
                   >
                     Contacta al Administrador
                   </span>
@@ -462,7 +463,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         </div>
 
         {/* Footer Desktop */}
-        <div className="flex items-center justify-between w-full text-xs text-white/80 pt-4 border-t border-white/10">
+        <div className="flex items-center justify-between w-full text-xs lg:text-sm text-white/80 pt-4 border-t border-white/10">
           <span>Ohana Sports Club • Gestión y Control Operativo</span>
           <span>Versión 2.0 • Sincronizado en Red Local</span>
         </div>
