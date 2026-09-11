@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Calendar, Clock, Sun, Moon, Sparkles, ChevronDown } from 'lucide-react';
+import { User, Calendar, Clock, Sun, Moon, Sparkles, ChevronDown, CheckCircle2, AlertCircle, AlertTriangle } from 'lucide-react';
 import { ZonaTipo, TarifaTipo, Reserva } from '../../types';
 import { apiService } from '../../services/api';
 
@@ -26,6 +26,29 @@ export const NuevaReservaScreen: React.FC<NuevaReservaScreenProps> = ({
   const [presupuestoEvento, setPresupuestoEvento] = useState<number>(1000);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Helper para detectar automáticamente Diurna o Nocturna según horario
+  const getTarifaByHour = (timeStr: string): TarifaTipo => {
+    const hour = parseInt(timeStr.split(':')[0], 10);
+    if (isNaN(hour)) return 'DIURNA';
+    return (hour >= 18 || hour < 6) ? 'NOCTURNA' : 'DIURNA';
+  };
+
+  // La tarifa de Cancha se determina estrictamente por el horario seleccionado
+  const activeTarifa: TarifaTipo = zona === 'CANCHA' ? getTarifaByHour(horaInicio) : tarifaTipo;
+
+  // Verificación en vivo de disponibilidad de fecha y horario
+  const disponibilidad = apiService.checkDisponibilidad(zona, fecha, horaInicio, horaFin);
+
+  const handleHoraInicioChange = (newHora: string) => {
+    setHoraInicio(newHora);
+    setErrorMsg(null);
+  };
+
+  const handleHoraFinChange = (newHora: string) => {
+    setHoraFin(newHora);
+    setErrorMsg(null);
+  };
+
   // Switch defaults when changing zona
   const handleSwitchZona = (newZona: ZonaTipo) => {
     setZona(newZona);
@@ -37,13 +60,18 @@ export const NuevaReservaScreen: React.FC<NuevaReservaScreenProps> = ({
     zona,
     horaInicio,
     horaFin,
-    tarifaTipo,
+    activeTarifa,
     presupuestoEvento
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+
+    if (!disponibilidad.disponible) {
+      setErrorMsg(disponibilidad.motivo || 'El horario y fecha seleccionados no están disponibles.');
+      return;
+    }
 
     const nombreFinal = zona === 'CANCHA' ? clienteNombre.trim() : clienteEmpresa.trim();
     if (!nombreFinal) {
@@ -191,7 +219,7 @@ export const NuevaReservaScreen: React.FC<NuevaReservaScreenProps> = ({
                   <input
                     type="time"
                     value={horaInicio}
-                    onChange={(e) => setHoraInicio(e.target.value)}
+                    onChange={(e) => handleHoraInicioChange(e.target.value)}
                     required
                     className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs md:text-sm font-semibold pl-8 pr-3 py-2.5 md:py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-ohana-blue"
                   />
@@ -207,7 +235,7 @@ export const NuevaReservaScreen: React.FC<NuevaReservaScreenProps> = ({
                   <input
                     type="time"
                     value={horaFin}
-                    onChange={(e) => setHoraFin(e.target.value)}
+                    onChange={(e) => handleHoraFinChange(e.target.value)}
                     required
                     className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs md:text-sm font-semibold pl-8 pr-3 py-2.5 md:py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-ohana-blue"
                   />
@@ -216,48 +244,84 @@ export const NuevaReservaScreen: React.FC<NuevaReservaScreenProps> = ({
               </div>
             </div>
 
+            {/* Banner de Verificación de Disponibilidad en Tiempo Real */}
+            {disponibilidad.disponible ? (
+              <div className="flex items-center gap-2 px-3.5 py-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs md:text-sm font-semibold">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Horario disponible para {zona === 'CANCHA' ? 'Cancha' : 'Zona de Eventos'} ({fecha})</span>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2.5 px-3.5 py-2.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs md:text-sm font-semibold">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <span className="font-bold block text-rose-900">Horario no disponible</span>
+                  <span className="text-[11px] md:text-xs text-rose-700">{disponibilidad.motivo}</span>
+                </div>
+              </div>
+            )}
+
             {/* Selector Condicional: Tarifa Cancha vs Presupuesto Eventos */}
             {zona === 'CANCHA' ? (
               <div>
-                <label className="block text-xs md:text-sm font-bold text-slate-700 mb-2">
-                  Tarifa de Cancha
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs md:text-sm font-bold text-slate-700">
+                    Tarifa de Cancha (Calculada por Horario)
+                  </label>
+                  <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
+                    ⚡ {activeTarifa === 'NOCTURNA' ? 'Nocturna con Luz' : 'Diurna'}
+                  </span>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   {/* Diurna S/60 */}
-                  <button
-                    type="button"
-                    onClick={() => setTarifaTipo('DIURNA')}
-                    className={`p-3.5 rounded-2xl border text-left transition flex flex-col justify-between cursor-pointer ${
-                      tarifaTipo === 'DIURNA'
-                        ? 'bg-blue-50/80 border-ohana-blue text-ohana-blue shadow-sm ring-2 ring-ohana-blue'
-                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                  <div
+                    className={`p-3.5 rounded-2xl border text-left transition flex flex-col justify-between select-none ${
+                      activeTarifa === 'DIURNA'
+                        ? 'bg-blue-50/90 border-ohana-blue text-ohana-blue shadow-sm ring-2 ring-ohana-blue'
+                        : 'bg-slate-50/50 border-slate-200 text-slate-400 opacity-50'
                     }`}
                   >
-                    <div className="flex items-center gap-2 mb-1 text-xs md:text-sm font-bold">
-                      <Sun className="w-4 h-4 text-blue-600" />
-                      <span>Diurna</span>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2 text-xs md:text-sm font-bold">
+                        <Sun className={`w-4 h-4 ${activeTarifa === 'DIURNA' ? 'text-blue-600' : 'text-slate-400'}`} />
+                        <span>Diurna</span>
+                      </div>
+                      {activeTarifa === 'DIURNA' && (
+                        <span className="text-[10px] font-black bg-blue-600 text-white px-2 py-0.5 rounded-md">
+                          ✓ Aplicada
+                        </span>
+                      )}
                     </div>
-                    <span className="text-[10px] md:text-xs text-slate-400">(06:00 - 18:00)</span>
-                    <span className="text-base md:text-lg font-black mt-1 text-slate-900">S/ 60.00</span>
-                  </button>
+                    <span className="text-[10px] md:text-xs text-slate-500">(06:00 - 18:00)</span>
+                    <span className={`text-base md:text-lg font-black mt-1 ${activeTarifa === 'DIURNA' ? 'text-slate-900' : 'text-slate-400'}`}>
+                      S/ 60.00 / hr
+                    </span>
+                  </div>
 
                   {/* Nocturna S/80 */}
-                  <button
-                    type="button"
-                    onClick={() => setTarifaTipo('NOCTURNA')}
-                    className={`p-3.5 rounded-2xl border text-left transition flex flex-col justify-between cursor-pointer ${
-                      tarifaTipo === 'NOCTURNA'
-                        ? 'bg-blue-50/80 border-ohana-blue text-ohana-blue shadow-sm ring-2 ring-ohana-blue'
-                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                  <div
+                    className={`p-3.5 rounded-2xl border text-left transition flex flex-col justify-between select-none ${
+                      activeTarifa === 'NOCTURNA'
+                        ? 'bg-blue-50/90 border-ohana-blue text-ohana-blue shadow-sm ring-2 ring-ohana-blue'
+                        : 'bg-slate-50/50 border-slate-200 text-slate-400 opacity-50'
                     }`}
                   >
-                    <div className="flex items-center gap-2 mb-1 text-xs md:text-sm font-bold">
-                      <Moon className="w-4 h-4 text-indigo-600" />
-                      <span>Nocturna con Luz</span>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2 text-xs md:text-sm font-bold">
+                        <Moon className={`w-4 h-4 ${activeTarifa === 'NOCTURNA' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                        <span>Nocturna con Luz</span>
+                      </div>
+                      {activeTarifa === 'NOCTURNA' && (
+                        <span className="text-[10px] font-black bg-indigo-600 text-white px-2 py-0.5 rounded-md">
+                          ✓ Aplicada
+                        </span>
+                      )}
                     </div>
-                    <span className="text-[10px] md:text-xs text-slate-400">(18:00 - 06:00)</span>
-                    <span className="text-base md:text-lg font-black mt-1 text-slate-900">S/ 80.00</span>
-                  </button>
+                    <span className="text-[10px] md:text-xs text-slate-500">(18:00 - 06:00)</span>
+                    <span className={`text-base md:text-lg font-black mt-1 ${activeTarifa === 'NOCTURNA' ? 'text-slate-900' : 'text-slate-400'}`}>
+                      S/ 80.00 / hr
+                    </span>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -351,13 +415,16 @@ export const NuevaReservaScreen: React.FC<NuevaReservaScreenProps> = ({
             <div className="pt-2">
               <button
                 type="submit"
-                className={`w-full text-white font-black text-sm md:text-base py-3.5 md:py-4 rounded-2xl shadow-lg transition active:scale-[0.98] cursor-pointer ${
-                  zona === 'CANCHA'
-                    ? 'bg-ohana-blue-light hover:bg-blue-700'
-                    : 'bg-ohana-orange hover:bg-orange-600'
+                disabled={!disponibilidad.disponible}
+                className={`w-full text-white font-black text-sm md:text-base py-3.5 md:py-4 rounded-2xl shadow-lg transition ${
+                  !disponibilidad.disponible
+                    ? 'bg-slate-400 cursor-not-allowed opacity-60 shadow-none'
+                    : zona === 'CANCHA'
+                      ? 'bg-ohana-blue-light hover:bg-blue-700 active:scale-[0.98] cursor-pointer'
+                      : 'bg-ohana-orange hover:bg-orange-600 active:scale-[0.98] cursor-pointer'
                 }`}
               >
-                Guardar reserva
+                {!disponibilidad.disponible ? 'Horario no disponible' : 'Guardar reserva'}
               </button>
             </div>
 

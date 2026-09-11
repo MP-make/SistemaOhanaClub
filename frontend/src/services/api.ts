@@ -327,14 +327,28 @@ export const apiService = {
     }
   },
 
-  async createReserva(reservaData: Omit<Reserva, 'id' | 'estado'>): Promise<Reserva> {
-    // Validar solapamiento (HU05 - Prevención de Errores)
-    const existing = localStore.getReservas();
-    const reqS = timeToMinutes(reservaData.horaInicio);
-    const reqE = timeToMinutes(reservaData.horaFin);
+  checkDisponibilidad(
+    zona: ZonaTipo,
+    fecha: string,
+    horaInicio: string,
+    horaFin: string,
+    excludeReservaId?: string
+  ): { disponible: boolean; motivo?: string; conflicto?: Reserva } {
+    const reqS = timeToMinutes(horaInicio);
+    const reqE = timeToMinutes(horaFin);
 
-    const conflict = existing.some(r => {
-      if (r.zona === reservaData.zona && r.fecha === reservaData.fecha && r.estado !== 'CANCELADA') {
+    if (isNaN(reqS) || isNaN(reqE)) {
+      return { disponible: false, motivo: 'Horario inválido' };
+    }
+
+    if (reqE <= reqS) {
+      return { disponible: false, motivo: 'La hora de fin debe ser posterior a la hora de inicio' };
+    }
+
+    const existing = localStore.getReservas();
+    const conflicto = existing.find(r => {
+      if (excludeReservaId && r.id === excludeReservaId) return false;
+      if (r.zona === zona && r.fecha === fecha && r.estado !== 'CANCELADA') {
         const exS = timeToMinutes(r.horaInicio);
         const exE = timeToMinutes(r.horaFin);
         return Math.max(reqS, exS) < Math.min(reqE, exE);
@@ -342,10 +356,32 @@ export const apiService = {
       return false;
     });
 
-    if (conflict) {
-      const nombreZona = reservaData.zona === 'CANCHA' ? 'Zona Cancha' : 'Zona Eventos';
-      throw new Error(`Horario no disponible. La ${nombreZona} ya tiene una reserva para ese horario.`);
+    if (conflicto) {
+      const nombreZona = zona === 'CANCHA' ? 'Cancha' : 'Zona de Eventos';
+      return {
+        disponible: false,
+        motivo: `La ${nombreZona} ya está reservada de ${conflicto.horaInicio} a ${conflicto.horaFin} (${conflicto.clienteNombre})`,
+        conflicto
+      };
     }
+
+    return { disponible: true, motivo: 'Horario y fecha disponibles' };
+  },
+
+  async createReserva(reservaData: Omit<Reserva, 'id' | 'estado'>): Promise<Reserva> {
+    // Validar solapamiento (HU05 - Prevención de Errores)
+    const check = this.checkDisponibilidad(
+      reservaData.zona,
+      reservaData.fecha,
+      reservaData.horaInicio,
+      reservaData.horaFin
+    );
+
+    if (!check.disponible) {
+      throw new Error(check.motivo || 'Horario no disponible.');
+    }
+
+    const existing = localStore.getReservas();
 
     const nuevaReserva: Reserva = {
       ...reservaData,
