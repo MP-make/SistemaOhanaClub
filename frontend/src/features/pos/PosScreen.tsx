@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Banknote, Smartphone, CreditCard, ChevronLeft, ChevronDown } from 'lucide-react';
+import { Search, Banknote, Smartphone, ArrowRightLeft, ChevronLeft, ChevronDown } from 'lucide-react';
 import { Producto, CartItem, MetodoPago, Venta } from '../../types';
 import { apiService } from '../../services/api';
 
@@ -257,45 +257,58 @@ export const PosScreen: React.FC<PosScreenProps> = ({ onVentaCompletada }) => {
               </div>
             </div>
 
-            {/* Selector de Medios de Pago */}
-            <div className="grid grid-cols-3 gap-2 mb-3.5">
+            {/* Selector de Medios de Pago (Efectivo, Yape, Plin, Transferencia) */}
+            <div className="grid grid-cols-2 gap-2 mb-3.5">
               <button
                 type="button"
                 onClick={() => setMetodoPago('EFECTIVO')}
-                className={`py-2.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-95 ${
+                className={`py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-95 ${
                   metodoPago === 'EFECTIVO'
                     ? 'bg-[#2563EB] text-white shadow-sm'
                     : 'bg-white border border-[#2563EB] text-slate-900 hover:bg-blue-50'
                 }`}
               >
-                <Banknote className="w-4 h-4" />
+                <Banknote className="w-4 h-4 shrink-0" />
                 <span>Efectivo</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => setMetodoPago('YAPE_PLIN')}
-                className={`py-2.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-95 ${
-                  metodoPago === 'YAPE_PLIN'
-                    ? 'bg-[#2563EB] text-white shadow-sm'
-                    : 'bg-white border border-[#2563EB] text-slate-900 hover:bg-blue-50'
+                onClick={() => setMetodoPago('YAPE')}
+                className={`py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-95 ${
+                  metodoPago === 'YAPE'
+                    ? 'bg-[#742284] text-white shadow-sm'
+                    : 'bg-white border border-[#742284] text-[#742284] hover:bg-purple-50'
                 }`}
               >
-                <Smartphone className="w-4 h-4" />
-                <span>Yape/Plin</span>
+                <Smartphone className="w-4 h-4 shrink-0" />
+                <span>Yape</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => setMetodoPago('TARJETA')}
-                className={`py-2.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-95 ${
-                  metodoPago === 'TARJETA'
+                onClick={() => setMetodoPago('PLIN')}
+                className={`py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-95 ${
+                  metodoPago === 'PLIN'
+                    ? 'bg-[#00B4D8] text-white shadow-sm'
+                    : 'bg-white border border-[#00B4D8] text-[#0077B6] hover:bg-cyan-50'
+                }`}
+              >
+                <Smartphone className="w-4 h-4 shrink-0" />
+                <span>Plin</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setMetodoPago('TRANSFERENCIA')}
+                className={`py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-95 ${
+                  metodoPago === 'TRANSFERENCIA'
                     ? 'bg-[#2563EB] text-white shadow-sm'
                     : 'bg-white border border-[#2563EB] text-slate-900 hover:bg-blue-50'
                 }`}
               >
-                <CreditCard className="w-4 h-4" />
-                <span>Tarjeta</span>
+                <ArrowRightLeft className="w-4 h-4 shrink-0" />
+                <span>Transferencia</span>
               </button>
             </div>
 
@@ -462,14 +475,14 @@ export const PosScreen: React.FC<PosScreenProps> = ({ onVentaCompletada }) => {
             </div>
           </div>
 
-          {/* Método de Pago */}
+          {/* Método de Pago (Efectivo, Yape, Plin, Transferencia) */}
           <div className="mt-4">
             <label className="text-xs font-bold text-slate-600 block mb-2">Método de Pago:</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setMetodoPago('EFECTIVO')}
-                className={`py-2 px-1 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition cursor-pointer ${
+                className={`py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
                   metodoPago === 'EFECTIVO'
                     ? 'bg-[#1638BF] text-white shadow-sm'
                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -481,28 +494,41 @@ export const PosScreen: React.FC<PosScreenProps> = ({ onVentaCompletada }) => {
 
               <button
                 type="button"
-                onClick={() => setMetodoPago('YAPE_PLIN')}
-                className={`py-2 px-1 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition cursor-pointer ${
-                  metodoPago === 'YAPE_PLIN'
-                    ? 'bg-[#1638BF] text-white shadow-sm'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                onClick={() => setMetodoPago('YAPE')}
+                className={`py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                  metodoPago === 'YAPE'
+                    ? 'bg-[#742284] text-white shadow-sm'
+                    : 'bg-purple-50 text-[#742284] border border-purple-200 hover:bg-purple-100'
                 }`}
               >
                 <Smartphone className="w-4 h-4" />
-                <span>Yape/Plin</span>
+                <span>Yape</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => setMetodoPago('TARJETA')}
-                className={`py-2 px-1 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition cursor-pointer ${
-                  metodoPago === 'TARJETA'
+                onClick={() => setMetodoPago('PLIN')}
+                className={`py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                  metodoPago === 'PLIN'
+                    ? 'bg-[#00B4D8] text-white shadow-sm'
+                    : 'bg-cyan-50 text-[#0077B6] border border-cyan-200 hover:bg-cyan-100'
+                }`}
+              >
+                <Smartphone className="w-4 h-4" />
+                <span>Plin</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setMetodoPago('TRANSFERENCIA')}
+                className={`py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                  metodoPago === 'TRANSFERENCIA'
                     ? 'bg-[#1638BF] text-white shadow-sm'
                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                 }`}
               >
-                <CreditCard className="w-4 h-4" />
-                <span>Tarjeta</span>
+                <ArrowRightLeft className="w-4 h-4" />
+                <span>Transferencia</span>
               </button>
             </div>
           </div>

@@ -10,7 +10,7 @@ export type ScreenType =
 
 export type ZonaTipo = 'CANCHA' | 'EVENTOS';
 export type TarifaTipo = 'DIURNA' | 'NOCTURNA' | 'EVENTO_PERSONALIZADO';
-export type MetodoPago = 'EFECTIVO' | 'YAPE_PLIN' | 'TARJETA' | 'TRANSFERENCIA';
+export type MetodoPago = 'EFECTIVO' | 'YAPE' | 'PLIN' | 'TRANSFERENCIA' | 'YAPE_PLIN' | 'TARJETA';
 
 export interface Usuario {
   id: string;

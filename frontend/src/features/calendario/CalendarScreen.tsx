@@ -4,7 +4,7 @@ import { Reserva, ZonaTipo } from '../../types';
 
 interface CalendarScreenProps {
   reservas: Reserva[];
-  onNewReserva: (zona?: ZonaTipo) => void;
+  onNewReserva: (zona?: ZonaTipo, fecha?: string, horaInicio?: string, horaFin?: string) => void;
   onSelectReserva?: (reserva: Reserva) => void;
 }
 
@@ -299,6 +299,12 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
     { time: '22:00', hour: 22 },
   ];
 
+  const getSlotEnd = (hour: number) => {
+    const nextH = Math.min(hour + 2, 24);
+    if (nextH === 24) return '23:59';
+    return `${String(nextH).padStart(2, '0')}:00`;
+  };
+
   // Reservas activas del día seleccionado
   const allDayReservas = reservas.filter(r => r.fecha === selectedDateStr && r.estado !== 'CANCELADA');
   const dayReservas = allDayReservas.filter(r => activeZone === 'ALL' || r.zona === activeZone);
@@ -446,9 +452,15 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
                               </div>
                             </div>
                           ) : (
-                            <div className="text-[10px] text-slate-300 text-center font-medium">
-                              Libre
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() => onNewReserva('CANCHA', selectedDateStr, r.time, getSlotEnd(r.hour))}
+                              className="w-full h-full rounded-md border border-dashed border-blue-200/80 hover:border-[#1638BF] hover:bg-blue-50/70 text-[10.5px] text-slate-400 hover:text-[#1638BF] font-semibold flex items-center justify-center gap-1 transition active:scale-95 group cursor-pointer"
+                              title={`Reservar Cancha a las ${r.time}`}
+                            >
+                              <Plus className="w-3 h-3 text-slate-300 group-hover:text-[#1638BF] group-hover:scale-110 transition shrink-0" />
+                              <span className="font-bold">Libre</span>
+                            </button>
                           )}
                         </div>
                       );
@@ -485,9 +497,15 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
                               </div>
                             </div>
                           ) : (
-                            <div className="text-[10px] text-slate-300 text-center font-medium">
-                              Libre
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() => onNewReserva('EVENTOS', selectedDateStr, r.time, getSlotEnd(r.hour))}
+                              className="w-full h-full rounded-md border border-dashed border-orange-200/80 hover:border-[#FF6A00] hover:bg-orange-50/70 text-[10.5px] text-slate-400 hover:text-[#FF6A00] font-semibold flex items-center justify-center gap-1 transition active:scale-95 group cursor-pointer"
+                              title={`Reservar Eventos a las ${r.time}`}
+                            >
+                              <Plus className="w-3 h-3 text-slate-300 group-hover:text-[#FF6A00] group-hover:scale-110 transition shrink-0" />
+                              <span className="font-bold">Libre</span>
+                            </button>
                           )}
                         </div>
                       );
@@ -653,9 +671,15 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
                               </span>
                             </div>
                           ) : (
-                            <div className="w-full h-10 border border-dashed border-slate-200 rounded-xl flex items-center justify-center text-xs text-slate-400">
-                              Disponible
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() => onNewReserva('CANCHA', selectedDateStr, r.time, getSlotEnd(r.hour))}
+                              className="w-full h-10 border border-dashed border-blue-200 hover:border-[#1638BF] hover:bg-blue-50/80 rounded-xl flex items-center justify-center gap-1.5 text-xs text-slate-400 hover:text-[#1638BF] font-bold transition active:scale-[0.99] cursor-pointer group"
+                              title={`Reservar Cancha (${selectedDateStr} ${r.time})`}
+                            >
+                              <Plus className="w-3.5 h-3.5 text-slate-300 group-hover:text-[#1638BF] group-hover:scale-110 transition" />
+                              <span>Disponible • Tocar para Reservar</span>
+                            </button>
                           )}
                         </div>
                       )}
@@ -681,9 +705,15 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
                               </span>
                             </div>
                           ) : (
-                            <div className="w-full h-10 border border-dashed border-slate-200 rounded-xl flex items-center justify-center text-xs text-slate-400">
-                              Disponible
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() => onNewReserva('EVENTOS', selectedDateStr, r.time, getSlotEnd(r.hour))}
+                              className="w-full h-10 border border-dashed border-orange-200 hover:border-[#FF6A00] hover:bg-orange-50/80 rounded-xl flex items-center justify-center gap-1.5 text-xs text-slate-400 hover:text-[#FF6A00] font-bold transition active:scale-[0.99] cursor-pointer group"
+                              title={`Reservar Eventos (${selectedDateStr} ${r.time})`}
+                            >
+                              <Plus className="w-3.5 h-3.5 text-slate-300 group-hover:text-[#FF6A00] group-hover:scale-110 transition" />
+                              <span>Disponible • Tocar para Reservar</span>
+                            </button>
                           )}
                         </div>
                       )}

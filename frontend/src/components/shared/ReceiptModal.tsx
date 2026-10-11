@@ -17,6 +17,17 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  const formatMetodo = (m?: string) => {
+    if (!m) return 'Efectivo';
+    if (m === 'YAPE') return 'Yape';
+    if (m === 'PLIN') return 'Plin';
+    if (m === 'TRANSFERENCIA') return 'Transferencia';
+    if (m === 'YAPE_PLIN') return 'Yape / Plin';
+    if (m === 'TARJETA') return 'Tarjeta';
+    if (m === 'EFECTIVO') return 'Efectivo';
+    return m;
+  };
+
   const handleShareWhatsApp = () => {
     let text = '';
     if (reserva) {
@@ -33,7 +44,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
       const itemsList = venta.items.map(i => `• ${i.cantidad}x ${i.nombre} - S/ ${i.subtotal.toFixed(2)}`).join('\n');
       text = `🛒 *OHANA CLUB - RESUMEN DE COMPRA*\n\n` +
         `📋 *Comprobante:* ${venta.numeroComprobante}\n` +
-        `💳 *Método:* ${venta.metodoPago}\n` +
+        `💳 *Método:* ${formatMetodo(venta.metodoPago)}\n` +
         `${itemsList}\n\n` +
         `💰 *TOTAL PAGADO: S/ ${venta.total.toFixed(2)}*\n\n` +
         `_Control interno no fiscal. ¡Vuelva pronto!_`;
@@ -115,7 +126,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm space-y-2">
                 <div className="flex justify-between text-xs text-slate-500">
                   <span>Comprobante: <b>{venta.numeroComprobante}</b></span>
-                  <span>Método: <b>{venta.metodoPago}</b></span>
+                  <span>Método: <b>{formatMetodo(venta.metodoPago)}</b></span>
                 </div>
                 <div className="divide-y divide-slate-100 pt-1">
                   {venta.items.map((it, idx) => (

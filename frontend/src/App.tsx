@@ -5,6 +5,7 @@ import { ScreenType, Reserva, Venta, ZonaTipo } from './types';
 import { Header } from './components/layout/Header';
 import { BottomNav } from './components/layout/BottomNav';
 import { Sidebar } from './components/layout/Sidebar';
+import { Wifi, WifiOff } from 'lucide-react';
 import { LoginScreen } from './features/auth/LoginScreen';
 import { DashboardScreen } from './features/dashboard/DashboardScreen';
 import { CalendarScreen } from './features/calendario/CalendarScreen';
@@ -48,6 +49,11 @@ export function App() {
 
   const [reservas, setReservas] = useState<Reserva[]>([]);
   const [selectedZonaReserva, setSelectedZonaReserva] = useState<ZonaTipo>('CANCHA');
+  const [reservaPreload, setReservaPreload] = useState<{ fecha?: string; horaInicio?: string; horaFin?: string } | null>(null);
+
+  // Detección de conectividad en tiempo real (Mitigación R05 y RNF05)
+  const [isOnline, setIsOnline] = useState<boolean>(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const [showRestoredNotice, setShowRestoredNotice] = useState<boolean>(false);
   
   // Modal de Constancia / Recibo
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
@@ -73,8 +79,26 @@ export function App() {
       setCurrentScreen(screen);
     };
 
+    const handleOnline = () => {
+      setIsOnline(true);
+      setShowRestoredNotice(true);
+      setTimeout(() => setShowRestoredNotice(false), 4500);
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+      setShowRestoredNotice(false);
+    };
+
     window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, []);
 
   const loadReservas = async () => {
@@ -90,8 +114,13 @@ export function App() {
     navigateTo('login');
   };
 
-  const handleOpenNuevaReserva = (zona: ZonaTipo = 'CANCHA') => {
+  const handleOpenNuevaReserva = (zona: ZonaTipo = 'CANCHA', fecha?: string, horaInicio?: string, horaFin?: string) => {
     setSelectedZonaReserva(zona);
+    if (fecha && horaInicio && horaFin) {
+      setReservaPreload({ fecha, horaInicio, horaFin });
+    } else {
+      setReservaPreload(null);
+    }
     navigateTo('nueva_reserva');
   };
 
@@ -115,9 +144,27 @@ export function App() {
     setIsReceiptOpen(true);
   };
 
-  // Si está en pantalla de Login, se renderiza a pantalla completa
+  // Si está en pantalla de Login, se renderiza a pantalla completa con aviso si está offline
   if (currentScreen === 'login') {
-    return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+    return (
+      <div className="relative min-h-screen">
+        {!isOnline && (
+          <aside 
+            role="status"
+            aria-live="assertive"
+            className="bg-amber-500 text-slate-950 px-4 py-2.5 shadow-md flex items-center justify-between z-50 sticky top-0 border-b border-amber-600 animate-fadeIn"
+          >
+            <div className="flex items-center gap-2 max-w-7xl mx-auto w-full text-xs font-black">
+              <WifiOff className="w-4 h-4 text-slate-950 shrink-0 animate-pulse" />
+              <span>
+                ⚠️ Modo Offline Activo (Mitigación R05): Sin conexión Wi-Fi/red. Operando en almacenamiento local seguro.
+              </span>
+            </div>
+          </aside>
+        )}
+        <LoginScreen onLoginSuccess={handleLoginSuccess} />
+      </div>
+    );
   }
 
   return (
@@ -133,6 +180,36 @@ export function App() {
       {/* ================= CONTENEDOR PRINCIPAL FLUIDO ================= */}
       <div className="flex-1 flex flex-col min-w-0 min-h-screen bg-slate-50 relative">
         
+        {/* Banner de Mitigación de Riesgo R05 (Detección de Red Offline/Online) */}
+        {!isOnline && (
+          <aside 
+            role="status"
+            aria-live="assertive"
+            className="bg-amber-500 text-slate-950 px-4 py-2.5 shadow-md flex items-center justify-between z-50 sticky top-0 border-b border-amber-600 animate-fadeIn"
+          >
+            <div className="flex items-center gap-2.5 max-w-7xl mx-auto w-full text-xs md:text-sm font-black">
+              <WifiOff className="w-4 h-4 text-slate-950 shrink-0 animate-pulse" />
+              <span>
+                ⚠️ Modo Offline Activo (Mitigación R05): Sin conexión Wi-Fi/red. Operando en almacenamiento local seguro; las operaciones se sincronizarán al reconectar.
+              </span>
+            </div>
+          </aside>
+        )}
+        {showRestoredNotice && (
+          <aside 
+            role="status"
+            aria-live="polite"
+            className="bg-emerald-600 text-white px-4 py-2 shadow-md flex items-center justify-between z-50 sticky top-0 border-b border-emerald-700 animate-fadeIn"
+          >
+            <div className="flex items-center gap-2.5 max-w-7xl mx-auto w-full text-xs md:text-sm font-black">
+              <Wifi className="w-4 h-4 text-white shrink-0" />
+              <span>
+                ✅ Conexión a internet restablecida. El sistema Ohana Club vuelve a estar en línea.
+              </span>
+            </div>
+          </aside>
+        )}
+
         {/* Header Superior (Móvil con estilo Figma / Desktop con Topbar) */}
         <Header
           currentScreen={currentScreen}
@@ -163,6 +240,9 @@ export function App() {
           {currentScreen === 'nueva_reserva' && (
             <NuevaReservaScreen
               initialZona={selectedZonaReserva}
+              initialFecha={reservaPreload?.fecha}
+              initialHoraInicio={reservaPreload?.horaInicio}
+              initialHoraFin={reservaPreload?.horaFin}
               onReservaCreated={handleReservaCreated}
               onCancel={() => navigateTo('calendario')}
             />

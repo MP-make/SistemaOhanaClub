@@ -1,16 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Calendar, Clock, Sun, Moon, Sparkles, ChevronDown, CheckCircle2, AlertCircle, AlertTriangle } from 'lucide-react';
 import { ZonaTipo, TarifaTipo, Reserva } from '../../types';
 import { apiService } from '../../services/api';
 
 interface NuevaReservaScreenProps {
   initialZona?: ZonaTipo;
+  initialFecha?: string;
+  initialHoraInicio?: string;
+  initialHoraFin?: string;
   onReservaCreated: (reserva: Reserva) => void;
   onCancel: () => void;
 }
 
 export const NuevaReservaScreen: React.FC<NuevaReservaScreenProps> = ({
   initialZona = 'CANCHA',
+  initialFecha,
+  initialHoraInicio,
+  initialHoraFin,
   onReservaCreated,
   onCancel
 }) => {
@@ -19,12 +25,19 @@ export const NuevaReservaScreen: React.FC<NuevaReservaScreenProps> = ({
   const [clienteTelefono, setClienteTelefono] = useState('');
   const [clienteEmpresa, setClienteEmpresa] = useState('');
   const [tipoEvento, setTipoEvento] = useState('Cumpleaños');
-  const [fecha, setFecha] = useState(() => new Date().toISOString().split('T')[0]);
-  const [horaInicio, setHoraInicio] = useState('16:00');
-  const [horaFin, setHoraFin] = useState('18:00');
+  const [fecha, setFecha] = useState(() => initialFecha || new Date().toISOString().split('T')[0]);
+  const [horaInicio, setHoraInicio] = useState(() => initialHoraInicio || '16:00');
+  const [horaFin, setHoraFin] = useState(() => initialHoraFin || '18:00');
   const [tarifaTipo, setTarifaTipo] = useState<TarifaTipo>('DIURNA');
   const [presupuestoEvento, setPresupuestoEvento] = useState<number>(1000);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialZona) setZona(initialZona);
+    if (initialFecha) setFecha(initialFecha);
+    if (initialHoraInicio) setHoraInicio(initialHoraInicio);
+    if (initialHoraFin) setHoraFin(initialHoraFin);
+  }, [initialZona, initialFecha, initialHoraInicio, initialHoraFin]);
 
   // Helper para detectar automáticamente Diurna o Nocturna según horario
   const getTarifaByHour = (timeStr: string): TarifaTipo => {
