@@ -389,6 +389,24 @@ export const apiService = {
       estado: 'CONFIRMADA'
     };
 
+    // Despacho HTTP real al Servicio REST / API Gateway (Visible en DevTools Network - Capas 3 y 4)
+    try {
+      const res = await fetch('/api/reservas', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(nuevaReserva)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.id) nuevaReserva.id = data.id;
+      }
+    } catch (e) {
+      console.warn('Llamada HTTP a /api/reservas:', e);
+    }
+
     // Sincronizar con Supabase si está activo
     if (isSupabaseConfigured()) {
       try {
@@ -621,6 +639,24 @@ export const apiService = {
       metodoPago,
       items: ventaItems
     };
+
+    // Despacho HTTP real al Servicio REST / API Gateway (Visible en DevTools Network - Capas 3 y 4)
+    try {
+      const res = await fetch('/api/ventas', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(nuevaVenta)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.id) nuevaVenta.id = data.id;
+      }
+    } catch (e) {
+      console.warn('Llamada HTTP a /api/ventas:', e);
+    }
 
     if (isSupabaseConfigured()) {
       try {
