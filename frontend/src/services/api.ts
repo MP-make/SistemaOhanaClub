@@ -11,8 +11,8 @@ import {
 } from '../types';
 import { supabaseApi, isSupabaseConfigured } from './supabaseClient';
 
-// API Base URL (FastAPI opcional)
-const API_BASE_URL = 'http://localhost:8000/api';
+// API Base URL
+const API_BASE_URL = '/api';
 
 // Estado local con persistencia y fallback automático
 const INITIAL_RESERVAS: Reserva[] = [

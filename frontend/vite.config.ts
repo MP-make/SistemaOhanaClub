@@ -5,6 +5,12 @@ const apiMockPlugin = (): Plugin => ({
   name: 'api-mock-middleware',
   configureServer(server) {
     server.middlewares.use((req, res, next) => {
+      if (req.url && req.url.startsWith('/api/reservas') && req.method === 'GET') {
+        res.setHeader('Content-Type', 'application/json');
+        res.statusCode = 200;
+        res.end(JSON.stringify([]));
+        return;
+      }
       if (req.url && req.url.startsWith('/api/reservas') && req.method === 'POST') {
         let body = '';
         req.on('data', chunk => { body += chunk; });
