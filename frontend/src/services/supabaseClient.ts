@@ -190,6 +190,15 @@ export const supabaseApi = {
   async createReserva(reserva: any) {
     if (!isSupabaseConfigured()) return null;
     const url = `${SUPABASE_URL}/rest/v1/reservas`;
+    
+    // Mapeo seguro contra el CHECK constraint de PostgreSQL (EFECTIVO, YAPE_PLIN, TARJETA, TRANSFERENCIA)
+    const mapMetodo = (m?: string) => {
+      if (m === 'YAPE' || m === 'PLIN') return 'YAPE_PLIN';
+      if (m === 'TRANSFERENCIA') return 'TRANSFERENCIA';
+      if (m === 'TARJETA') return 'TARJETA';
+      return 'EFECTIVO';
+    };
+
     const res = await fetch(url, {
       method: 'POST',
       headers: getHeaders(),
@@ -200,14 +209,14 @@ export const supabaseApi = {
         cliente_empresa: reserva.clienteEmpresa,
         tipo_evento: reserva.tipoEvento,
         fecha: reserva.fecha,
-        hora_inicio: reserva.horaInicio,
-        hora_fin: reserva.horaFin,
+        hora_inicio: reserva.horaInicio.length === 5 ? `${reserva.horaInicio}:00` : reserva.horaInicio,
+        hora_fin: reserva.horaFin.length === 5 ? `${reserva.horaFin}:00` : reserva.horaFin,
         tipo_tarifa: reserva.tipoTarifa,
         monto_total: reserva.montoTotal,
         adelanto: reserva.adelanto,
         saldo_pendiente: reserva.saldoPendiente,
         estado: reserva.estado || 'CONFIRMADA',
-        metodo_pago_adelanto: reserva.metodoPago || 'EFECTIVO',
+        metodo_pago_adelanto: mapMetodo(reserva.metodoPago),
         es_recurrente: reserva.esRecurrente || false
       })
     });
@@ -224,6 +233,9 @@ export const supabaseApi = {
   async createVenta(total: number, metodoPago: string, items: Array<{ producto_id: string; cantidad: number; precio_unitario: number; subtotal: number }>) {
     if (!isSupabaseConfigured()) return null;
     
+    // Mapeo seguro contra CHECK constraint de ventas_minimarket (EFECTIVO, YAPE_PLIN, TARJETA)
+    const metodoValido = (metodoPago === 'YAPE' || metodoPago === 'PLIN' || metodoPago === 'TRANSFERENCIA') ? 'YAPE_PLIN' : (metodoPago === 'TARJETA' ? 'TARJETA' : 'EFECTIVO');
+    
     const numeroComprobante = `REC-${Date.now().toString().slice(-6)}`;
     const ventaUrl = `${SUPABASE_URL}/rest/v1/ventas_minimarket`;
     const resVenta = await fetch(ventaUrl, {
@@ -232,7 +244,7 @@ export const supabaseApi = {
       body: JSON.stringify({
         numero_comprobante: numeroComprobante,
         total,
-        metodo_pago: metodoPago
+        metodo_pago: metodoValido
       })
     });
     if (!resVenta.ok) {
