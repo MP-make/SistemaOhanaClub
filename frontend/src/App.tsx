@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
-import { ScreenType, Reserva, Venta, ZonaTipo } from './types';
+import { ScreenType, Reserva, Venta, ZonaTipo, MetodoPago } from './types';
 import { Header } from './components/layout/Header';
 import { BottomNav } from './components/layout/BottomNav';
 import { Sidebar } from './components/layout/Sidebar';
@@ -13,6 +13,7 @@ import { NuevaReservaScreen } from './features/reservas/NuevaReservaScreen';
 import { PosScreen } from './features/pos/PosScreen';
 import { InventarioScreen } from './features/inventario/InventarioScreen';
 import { CierreCajaScreen } from './features/caja/CierreCajaScreen';
+import { ReportesScreen } from './features/reportes/ReportesScreen';
 import { ReceiptModal } from './components/shared/ReceiptModal';
 import { apiService } from './services/api';
 
@@ -24,7 +25,7 @@ const screenToPath: Record<ScreenType, string> = {
   pos: '/pos',
   inventario: '/inventario',
   caja: '/caja',
-  reportes: '/caja',
+  reportes: '/reportes',
 };
 
 const pathToScreen: Record<string, ScreenType> = {
@@ -37,7 +38,7 @@ const pathToScreen: Record<string, ScreenType> = {
   '/pos': 'pos',
   '/inventario': 'inventario',
   '/caja': 'caja',
-  '/reportes': 'caja',
+  '/reportes': 'reportes',
 };
 
 export function App() {
@@ -144,6 +145,17 @@ export function App() {
     setIsReceiptOpen(true);
   };
 
+  const handleCobrarSaldoReserva = async (reservaId: string, metodoPago: MetodoPago) => {
+    try {
+      const updated = await apiService.cobrarSaldoReserva(reservaId, metodoPago);
+      setActiveReservaReceipt(updated);
+      setReservas(prev => prev.map(r => r.id === reservaId ? updated : r));
+      await loadReservas();
+    } catch (err: any) {
+      alert(err.message || 'Error al cobrar el saldo de la reserva');
+    }
+  };
+
   // Si está en pantalla de Login, se renderiza a pantalla completa con aviso si está offline
   if (currentScreen === 'login') {
     return (
@@ -217,6 +229,7 @@ export function App() {
           onLogout={handleLogout}
           onBack={() => navigateTo('calendario')}
           zonaReserva={selectedZonaReserva}
+          onReservaActualizada={loadReservas}
         />
 
         {/* Contenido Principal con Scroll Suave */}
@@ -259,6 +272,10 @@ export function App() {
           {currentScreen === 'caja' && (
             <CierreCajaScreen />
           )}
+
+          {currentScreen === 'reportes' && (
+            <ReportesScreen />
+          )}
         </main>
 
         {/* Barra de Navegación Inferior (Visible solo en Móvil < md) */}
@@ -273,6 +290,7 @@ export function App() {
           onClose={() => setIsReceiptOpen(false)}
           reserva={activeReservaReceipt}
           venta={activeVentaReceipt}
+          onCobrarSaldo={handleCobrarSaldoReserva}
         />
       </div>
     </div>

@@ -90,7 +90,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate, on
       subtitle: 'Ver reportes',
       iconSrc: '/iconos/reportes.svg',
       titleColor: 'text-[#0844B1]',
-      action: () => onNavigate('caja')
+      action: () => onNavigate('reportes')
     },
   ];
 

@@ -88,12 +88,26 @@ export interface DesgloseMetodos {
   total: number;
 }
 
+export interface AperturaCaja {
+  id?: string;
+  fecha: string;
+  montoInicial: number;
+  horaApertura: string;
+  abiertaPor?: string;
+  estado: 'ABIERTA' | 'CERRADA';
+  montoCierreEfectivo?: number;
+  horaCierre?: string;
+  cerradaPor?: string;
+  observaciones?: string;
+}
+
 export interface CierreCaja {
   periodo: string;
   fechaConsulta: string;
   alquileres: DesgloseMetodos;
   minimarket: DesgloseMetodos;
   totalGeneral: number;
+  aperturaActual?: AperturaCaja | null;
 }
 
 export interface DashboardMetrics {

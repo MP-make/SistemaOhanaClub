@@ -229,6 +229,29 @@ export const supabaseApi = {
     return data[0];
   },
 
+  async updateReserva(id: string, updates: any) {
+    if (!isSupabaseConfigured()) return null;
+    const url = `${SUPABASE_URL}/rest/v1/reservas?id=eq.${id}`;
+    const payload: any = {};
+    if (updates.estado !== undefined) payload.estado = updates.estado;
+    if (updates.saldoPendiente !== undefined) payload.saldo_pendiente = updates.saldoPendiente;
+    if (updates.adelanto !== undefined) payload.adelanto = updates.adelanto;
+    if (updates.horaInicio !== undefined) payload.hora_inicio = updates.horaInicio.length === 5 ? `${updates.horaInicio}:00` : updates.horaInicio;
+    if (updates.horaFin !== undefined) payload.hora_fin = updates.horaFin.length === 5 ? `${updates.horaFin}:00` : updates.horaFin;
+
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      console.error('Error updateReserva Supabase:', await res.text());
+      return null;
+    }
+    const data = await res.json();
+    return data[0];
+  },
+
   // 4. VENTAS MINIMARKET
   async createVenta(total: number, metodoPago: string, items: Array<{ producto_id: string; cantidad: number; precio_unitario: number; subtotal: number }>) {
     if (!isSupabaseConfigured()) return null;
@@ -268,8 +291,28 @@ export const supabaseApi = {
         headers: getHeaders(),
         body: JSON.stringify(detalles)
       });
+
+      // Descontar stock real en la base de datos de Supabase para cada producto vendido
+      for (const it of items) {
+        try {
+          await this.updateStock(it.producto_id, -it.cantidad);
+        } catch (errStock) {
+          console.warn(`No se pudo descontar stock de ${it.producto_id} en Supabase:`, errStock);
+        }
+      }
     }
 
     return ventaCreada;
+  },
+
+  async getVentas() {
+    if (!isSupabaseConfigured()) return null;
+    const url = `${SUPABASE_URL}/rest/v1/ventas_minimarket?select=*,detalle_ventas(*,productos(nombre,presentacion))&order=fecha_hora.desc`;
+    const res = await fetch(url, { headers: getHeaders() });
+    if (!res.ok) {
+      console.error('Error getVentas Supabase:', await res.text());
+      return null;
+    }
+    return await res.json();
   }
 };

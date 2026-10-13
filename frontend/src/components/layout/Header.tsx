@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Menu, Bell, ShoppingCart, ArrowLeft, Filter, CalendarDays, LogOut, X, User, ShieldCheck, Home, Calendar, Package, Archive, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
-import { ScreenType, ZonaTipo } from '../../types';
+import React, { useState, useEffect } from 'react';
+import { Menu, Bell, ShoppingCart, ArrowLeft, Filter, CalendarDays, LogOut, X, User, ShieldCheck, Home, Calendar, Package, Archive, CheckCircle2, AlertTriangle, Clock, DollarSign } from 'lucide-react';
+import { ScreenType, ZonaTipo, Reserva } from '../../types';
 import { Logo } from '../shared/Logo';
+import { apiService, localStore } from '../../services/api';
 
 interface HeaderProps {
   currentScreen: ScreenType;
@@ -11,6 +12,21 @@ interface HeaderProps {
   cartCount?: number;
   zonaReserva?: ZonaTipo;
   onToggleSidebar?: () => void;
+  onReservaActualizada?: () => void;
+}
+
+interface AlertaReserva {
+  id: string;
+  reservaId: string;
+  tipo: 'PROXIMA' | 'DEMORADA' | 'EN_CURSO';
+  clienteNombre: string;
+  horaInicio: string;
+  horaFin: string;
+  zona: ZonaTipo;
+  mensaje: string;
+  minutosDiferencia: number;
+  saldoPendiente: number;
+  adelanto: number;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -20,10 +36,150 @@ export const Header: React.FC<HeaderProps> = ({
   onBack,
   cartCount = 0,
   zonaReserva = 'CANCHA',
-  onToggleSidebar
+  onToggleSidebar,
+  onReservaActualizada
 }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [notificacionesEnVivo, setNotificacionesEnVivo] = useState<AlertaReserva[]>([]);
+
+  // Función para evaluar el estado en tiempo real de las reservas
+  const calcularNotificaciones = async () => {
+    try {
+      const reservas = await apiService.getReservas();
+      const now = new Date();
+      // Formato YYYY-MM-DD local
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const todayStr = `${year}-${month}-${day}`;
+      const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+      const alertas: AlertaReserva[] = [];
+
+      reservas.forEach(r => {
+        if (r.estado === 'CANCELADA') return;
+
+        // Si es de hoy o de fechas recientes para pruebas
+        const [hStart, mStart] = r.horaInicio.split(':').map(Number);
+        const [hEnd, mEnd] = r.horaFin.split(':').map(Number);
+        const startMin = (hStart || 0) * 60 + (mStart || 0);
+        const endMin = (hEnd || 0) * 60 + (mEnd || 0);
+
+        // Diferencia en minutos respecto a la hora de inicio (positivo = ya pasó la hora)
+        const diff = nowMinutes - startMin;
+
+        // 1. Caso Próxima (Faltan entre 0 y 60 min para que empiece)
+        if (diff < 0 && Math.abs(diff) <= 60) {
+          alertas.push({
+            id: `notif-prox-${r.id}`,
+            reservaId: r.id,
+            tipo: 'PROXIMA',
+            clienteNombre: r.clienteNombre,
+            horaInicio: r.horaInicio,
+            horaFin: r.horaFin,
+            zona: r.zona,
+            mensaje: `El turno comienza en ${Math.abs(diff)} min. Margen de anticipación permitido: hasta 15 min antes.`,
+            minutosDiferencia: diff,
+            saldoPendiente: r.saldoPendiente,
+            adelanto: r.adelanto
+          });
+        }
+        // 2. Caso Demorada / En tolerancia de 15 minutos (Pasó entre 1 y 30 minutos de la hora indicada)
+        else if (diff >= 0 && diff <= 30) {
+          alertas.push({
+            id: `notif-demo-${r.id}`,
+            reservaId: r.id,
+            tipo: 'DEMORADA',
+            clienteNombre: r.clienteNombre,
+            horaInicio: r.horaInicio,
+            horaFin: r.horaFin,
+            zona: r.zona,
+            mensaje: diff <= 15 
+              ? `Tolerancia de llegada activa: ${diff} min transcurridos (límite máximo: 15 min de espera para respetar su horario).` 
+              : `¡Tolerancia vencida! Han pasado ${diff} min desde la hora pactada (${r.horaInicio}). Verificar si asiste o liberar turno.`,
+            minutosDiferencia: diff,
+            saldoPendiente: r.saldoPendiente,
+            adelanto: r.adelanto
+          });
+        }
+        // 3. Caso En Curso con Saldo Pendiente
+        else if (nowMinutes >= startMin && nowMinutes < endMin) {
+          alertas.push({
+            id: `notif-curso-${r.id}`,
+            reservaId: r.id,
+            tipo: 'EN_CURSO',
+            clienteNombre: r.clienteNombre,
+            horaInicio: r.horaInicio,
+            horaFin: r.horaFin,
+            zona: r.zona,
+            mensaje: r.saldoPendiente > 0 
+              ? `Turno en juego. Recuerda cobrar el saldo restante de S/ ${r.saldoPendiente.toFixed(2)}.`
+              : 'Turno en juego. Horario cumpliéndose con normalidad (100% Pagado).',
+            minutosDiferencia: diff,
+            saldoPendiente: r.saldoPendiente,
+            adelanto: r.adelanto
+          });
+        }
+        // Si tiene saldo pendiente, incluirlo para gestión de cobranza
+        else if (r.saldoPendiente > 0) {
+          alertas.push({
+            id: `notif-saldo-${r.id}`,
+            reservaId: r.id,
+            tipo: 'PROXIMA',
+            clienteNombre: r.clienteNombre,
+            horaInicio: r.horaInicio,
+            horaFin: r.horaFin,
+            zona: r.zona,
+            mensaje: `Turno agendado (${r.fecha}). Cobro pendiente por liquidar: S/ ${r.saldoPendiente.toFixed(2)}.`,
+            minutosDiferencia: diff,
+            saldoPendiente: r.saldoPendiente,
+            adelanto: r.adelanto
+          });
+        }
+      });
+
+      // Ordenar: primero demoradas, luego en curso, luego próximas
+      alertas.sort((a, b) => {
+        const peso = { DEMORADA: 1, EN_CURSO: 2, PROXIMA: 3 };
+        return peso[a.tipo] - peso[b.tipo];
+      });
+
+      setNotificacionesEnVivo(alertas);
+    } catch (e) {
+      console.warn('Error al calcular notificaciones:', e);
+    }
+  };
+
+  useEffect(() => {
+    calcularNotificaciones();
+    const interval = setInterval(calcularNotificaciones, 30000); // Actualizar cada 30 segundos
+    return () => clearInterval(interval);
+  }, [currentScreen]);
+
+  // Manejador para otorgar 15 min de espera (o restar)
+  const handleProrrogar15 = async (reservaId: string, delta: number) => {
+    try {
+      await apiService.prorrogarReserva(reservaId, delta);
+      alert(`Se aplicó un ajuste de ${delta > 0 ? `+${delta}` : delta} minutos al turno.`);
+      await calcularNotificaciones();
+      if (onReservaActualizada) onReservaActualizada();
+    } catch (err: any) {
+      alert(err.message || 'Error al prorrogar reserva');
+    }
+  };
+
+  // Manejador para cobrar el saldo pendiente directamente desde la notificación
+  const handleCobrarSaldo = async (reservaId: string) => {
+    try {
+      const updated = await apiService.cobrarSaldoReserva(reservaId, 'EFECTIVO');
+      alert(`¡Saldo cobrado con éxito! Reserva de ${updated.clienteNombre} ahora está PAGADA.`);
+      await calcularNotificaciones();
+      if (onReservaActualizada) onReservaActualizada();
+    } catch (err: any) {
+      alert(err.message || 'Error al cobrar saldo');
+    }
+  };
 
   if (currentScreen === 'login') return null;
 
@@ -64,7 +220,7 @@ export const Header: React.FC<HeaderProps> = ({
       case 'pos': return 'Minimarket POS';
       case 'inventario': return 'Inventario';
       case 'caja': return 'Cierre de caja';
-      case 'reportes': return 'Reportes Mensuales';
+      case 'reportes': return 'Reportes y Finanzas';
       default: return 'Ohana Club';
     }
   };
@@ -295,13 +451,25 @@ export const Header: React.FC<HeaderProps> = ({
               {/* Botón Central: + NUEVA RESERVA */}
               <button
                 onClick={() => handleNavAndClose('nueva_reserva')}
-                className="w-full bg-[#D8F600] hover:bg-[#c9e600] active:scale-[0.98] text-[#0F2276] font-black text-xs py-3.5 px-4 rounded-2xl shadow-lg flex items-center justify-between transition cursor-pointer"
+                className="w-full bg-[#D8F600] hover:bg-[#c9e600] active:scale-[0.98] text-[#0F2276] font-black text-xs py-3.5 px-4 rounded-2xl shadow-lg flex items-center justify-between transition cursor-pointer mb-2.5"
               >
                 <div className="flex items-center gap-2.5">
                   <Calendar className="w-4 h-4 text-[#0F2276] stroke-[2.5]" />
                   <span className="tracking-wide text-[13px] font-black">+ NUEVA RESERVA</span>
                 </div>
                 <span className="text-xs opacity-70">➔</span>
+              </button>
+
+              {/* Botón Acceso a Reportes */}
+              <button
+                onClick={() => handleNavAndClose('reportes')}
+                className="w-full bg-white/10 hover:bg-white/20 active:scale-[0.98] text-white font-bold text-xs py-3 px-4 rounded-2xl border border-white/20 flex items-center justify-between transition cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="text-sm">📊</span>
+                  <span className="tracking-wide text-xs">Centro de Reportes</span>
+                </div>
+                <span className="text-xs text-[#D8F600] font-black">Ver</span>
               </button>
 
               {/* Tarjeta de Información de Turno y Estado */}
@@ -336,64 +504,135 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       )}
 
-      {/* ================= MODAL / CENTRO DE NOTIFICACIONES (MOVIL Y DESKTOP) ================= */}
+      {/* ================= POPOVER / DROPDOWN DE NOTIFICACIONES ESTILO FACEBOOK ================= */}
       {isNotifOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn select-none">
-          <div className="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl p-6 border border-slate-100 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-blue-50 text-[#1638BF] flex items-center justify-center">
-                  <Bell className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">Centro de Notificaciones</h3>
-                  <p className="text-xs text-slate-500">Avisos del local en tiempo real</p>
-                </div>
+        <>
+          {/* Backdrop invisible para cerrar al hacer clic afuera */}
+          <div 
+            className="fixed inset-0 z-40 bg-transparent"
+            onClick={() => setIsNotifOpen(false)}
+          />
+
+          {/* Menú Desplegable Flotante tipo Facebook con Flecha Superior */}
+          <div className="fixed sm:absolute top-16 right-3 sm:right-6 md:right-8 z-50 w-[94vw] sm:w-[420px] bg-white rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.18)] border border-slate-200/90 overflow-hidden animate-scaleUp select-none">
+            
+            {/* Cabecera estilo Facebook (Notifications, Mark as read, etc.) */}
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-white">
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-black text-slate-900 tracking-tight">Notificaciones</h3>
+                {notificacionesEnVivo.length > 0 && (
+                  <span className="bg-rose-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full">
+                    {notificacionesEnVivo.length} nuevas
+                  </span>
+                )}
               </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setIsNotifOpen(false);
+                    onNavigate('calendario');
+                  }}
+                  className="text-xs font-bold text-[#1638BF] hover:underline cursor-pointer"
+                >
+                  Ver Agenda
+                </button>
+                <button
+                  onClick={() => setIsNotifOpen(false)}
+                  className="p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                  title="Cerrar"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Lista de Notificaciones estilo Facebook */}
+            <div className="max-h-[440px] overflow-y-auto divide-y divide-slate-100">
+              {notificacionesEnVivo.length === 0 ? (
+                <div className="text-center py-10 px-4 text-slate-400 text-xs">
+                  <CheckCircle2 className="w-10 h-10 mx-auto mb-2 text-emerald-400 stroke-[1.5]" />
+                  <p className="font-bold text-slate-700 text-sm">No tienes notificaciones nuevas</p>
+                  <p className="text-slate-400 mt-1">Te avisaremos cuando se acerque una reserva o haya retrasos de llegada.</p>
+                </div>
+              ) : (
+                notificacionesEnVivo.map((n) => (
+                  <div
+                    key={n.id}
+                    onClick={() => {
+                      setIsNotifOpen(false);
+                      onNavigate('calendario');
+                    }}
+                    className="p-3.5 hover:bg-slate-50 transition cursor-pointer flex gap-3 items-start group"
+                  >
+                    {/* Icono / Avatar lateral */}
+                    <div className="relative shrink-0 mt-0.5">
+                      <div className={`w-11 h-11 rounded-full flex items-center justify-center font-black text-sm shadow-xs ${
+                        n.tipo === 'DEMORADA' 
+                          ? 'bg-rose-100 text-rose-700' 
+                          : n.tipo === 'EN_CURSO'
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {n.zona === 'CANCHA' ? '⚽' : '🎉'}
+                      </div>
+                      <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full ring-2 ring-white flex items-center justify-center text-[8px] font-black ${
+                        n.tipo === 'DEMORADA' ? 'bg-rose-500 text-white' : n.tipo === 'EN_CURSO' ? 'bg-amber-500 text-white' : 'bg-blue-600 text-white'
+                      }`}>
+                        ●
+                      </span>
+                    </div>
+
+                    {/* Contenido de la notificación */}
+                    <div className="flex-1 min-w-0 text-xs space-y-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${
+                          n.tipo === 'DEMORADA'
+                            ? 'bg-rose-100 text-rose-800'
+                            : n.tipo === 'EN_CURSO'
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {n.tipo === 'DEMORADA' ? 'Tolerancia en espera' : n.tipo === 'EN_CURSO' ? 'Turno en curso' : 'Próxima reserva'}
+                        </span>
+                        <span className="text-[10.5px] font-bold text-slate-500">
+                          {n.horaInicio} - {n.horaFin}
+                        </span>
+                      </div>
+
+                      <p className="text-slate-800 text-xs font-semibold leading-snug">
+                        <strong className="font-black text-slate-900">{n.clienteNombre}</strong> {n.mensaje}
+                      </p>
+
+                      <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+                        <span>Espacio: <b>{n.zona === 'CANCHA' ? 'Cancha Sintética' : 'Zona Eventos'}</b></span>
+                        {n.saldoPendiente > 0 ? (
+                          <span className="text-rose-600 font-bold">Resta S/ {n.saldoPendiente.toFixed(2)}</span>
+                        ) : (
+                          <span className="text-emerald-600 font-bold">✓ Pagado</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Footer estilo Facebook */}
+            <div className="p-3 bg-slate-50 border-t border-slate-100 text-center">
               <button
-                onClick={() => setIsNotifOpen(false)}
-                className="p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                onClick={() => {
+                  setIsNotifOpen(false);
+                  onNavigate('calendario');
+                }}
+                className="w-full text-center text-xs font-bold text-[#1638BF] hover:text-blue-700 transition cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                Abrir Calendario para cobrar saldo o gestionar turnos →
               </button>
             </div>
 
-            <div className="space-y-2.5 max-h-72 overflow-y-auto no-scrollbar">
-              <div className="p-3 bg-blue-50/80 border border-blue-100 rounded-2xl flex items-start gap-3">
-                <Clock className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-                <div className="text-xs">
-                  <p className="font-bold text-slate-900">8 Reservas activas hoy</p>
-                  <p className="text-slate-600 mt-0.5">5 turnos en Cancha Sintética y 3 eventos programados.</p>
-                </div>
-              </div>
-
-              <div className="p-3 bg-amber-50/80 border border-amber-100 rounded-2xl flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                <div className="text-xs">
-                  <p className="font-bold text-slate-900">Aviso de Inventario</p>
-                  <p className="text-slate-600 mt-0.5">Bebidas isotónicas y gaseosas con stock controlado.</p>
-                </div>
-              </div>
-
-              <div className="p-3 bg-emerald-50/80 border border-emerald-100 rounded-2xl flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                <div className="text-xs">
-                  <p className="font-bold text-slate-900">Caja y Cobros Operativos</p>
-                  <p className="text-slate-600 mt-0.5">Cobros en efectivo, Yape, Plin y tarjeta sincronizados con la base de datos.</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-2 flex gap-3">
-              <button
-                onClick={() => setIsNotifOpen(false)}
-                className="w-full bg-[#1638BF] hover:bg-blue-700 text-white font-bold text-xs py-3 rounded-xl shadow-md transition cursor-pointer"
-              >
-                Entendido
-              </button>
-            </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* ================= TOPBAR DESKTOP / TABLET (>= md) ================= */}
@@ -429,7 +668,9 @@ export const Header: React.FC<HeaderProps> = ({
             title="Centro de Notificaciones"
           >
             <Bell className="w-5 h-5 text-[#1638BF]" />
-            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#FF6A00]" />
+            {notificacionesEnVivo.length > 0 && (
+              <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-white animate-pulse" />
+            )}
           </button>
         </div>
       </header>

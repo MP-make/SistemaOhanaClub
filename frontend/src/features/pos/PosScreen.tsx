@@ -1,5 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Banknote, Smartphone, ArrowRightLeft, ChevronLeft, ChevronDown } from 'lucide-react';
+import { 
+  Search, 
+  Banknote, 
+  Smartphone, 
+  ArrowRightLeft, 
+  ChevronLeft, 
+  ChevronDown,
+  History,
+  Receipt,
+  X,
+  Calendar,
+  Clock,
+  ShoppingBag
+} from 'lucide-react';
 import { Producto, CartItem, MetodoPago, Venta } from '../../types';
 import { apiService } from '../../services/api';
 
@@ -14,6 +27,11 @@ export const PosScreen: React.FC<PosScreenProps> = ({ onVentaCompletada }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [metodoPago, setMetodoPago] = useState<MetodoPago>('EFECTIVO');
   const [loading, setLoading] = useState<boolean>(false);
+  
+  // Estado para el historial de ventas
+  const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
+  const [historialVentas, setHistorialVentas] = useState<Venta[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState<boolean>(false);
 
   useEffect(() => {
     loadProductos();
@@ -24,7 +42,35 @@ export const PosScreen: React.FC<PosScreenProps> = ({ onVentaCompletada }) => {
     setProductos(list);
   };
 
+  const loadHistorial = async () => {
+    setLoadingHistory(true);
+    try {
+      const list = await apiService.getVentas();
+      setHistorialVentas(list);
+    } catch (err) {
+      console.error('Error al cargar historial de ventas:', err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const openHistory = () => {
+    setShowHistoryModal(true);
+    loadHistorial();
+  };
+
   const addToCart = (prod: Producto) => {
+    // Validar disponibilidad antes de añadir al carrito
+    if (prod.stockActual <= 0) {
+      alert(`El producto "${prod.nombre}" no tiene stock disponible.`);
+      return;
+    }
+    const enCarrito = cart.find(c => c.producto.id === prod.id)?.cantidad || 0;
+    if (enCarrito >= prod.stockActual) {
+      alert(`No puedes añadir más unidades. Stock disponible: ${prod.stockActual}`);
+      return;
+    }
+
     setCart(prev => {
       const existing = prev.find(item => item.producto.id === prod.id);
       if (existing) {
@@ -54,6 +100,8 @@ export const PosScreen: React.FC<PosScreenProps> = ({ onVentaCompletada }) => {
         metodoPago
       );
       setCart([]);
+      // Recargar catálogo inmediatamente para reflejar el stock descontado en vivo
+      await loadProductos();
       onVentaCompletada(venta);
     } catch (err: any) {
       alert(err.message || 'Error al procesar cobro');
@@ -121,16 +169,26 @@ export const PosScreen: React.FC<PosScreenProps> = ({ onVentaCompletada }) => {
         <div className="flex-1 bg-white rounded-t-[32px] px-4 pt-5 pb-24 flex flex-col justify-between shadow-xs border-t border-slate-100">
           <div>
             
-            {/* Buscador de productos */}
-            <div className="relative mb-3.5">
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar productos"
-                className="w-full bg-white border border-[#2563EB] text-slate-800 text-xs font-medium pl-9 pr-4 py-2.5 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
-              />
-              <Search className="w-4 h-4 text-[#2563EB] absolute left-3 top-3" />
+            {/* Cabecera Móvil: Buscador y Botón Historial de Ventas */}
+            <div className="flex items-center gap-2 mb-3.5">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Buscar productos"
+                  className="w-full bg-white border border-[#2563EB] text-slate-800 text-xs font-medium pl-9 pr-4 py-2.5 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
+                />
+                <Search className="w-4 h-4 text-[#2563EB] absolute left-3 top-3" />
+              </div>
+              <button
+                type="button"
+                onClick={openHistory}
+                className="bg-blue-50 border border-[#2563EB] text-[#2563EB] hover:bg-blue-100 p-2.5 rounded-xl flex items-center justify-center transition cursor-pointer active:scale-95 shrink-0"
+                title="Ver ventas realizadas"
+              >
+                <History className="w-4 h-4" />
+              </button>
             </div>
 
             {/* Píldoras de Categorías */}
@@ -365,6 +423,17 @@ export const PosScreen: React.FC<PosScreenProps> = ({ onVentaCompletada }) => {
                 );
               })}
             </div>
+
+            {/* Botón Ver Ventas Realizadas (Desktop) */}
+            <button
+              type="button"
+              onClick={openHistory}
+              className="bg-blue-50 border border-blue-200 hover:bg-blue-100 text-[#1638BF] font-black text-xs px-4 py-2.5 rounded-xl shadow-xs transition flex items-center gap-2 cursor-pointer shrink-0"
+              title="Consultar historial de ventas y comprobantes"
+            >
+              <History className="w-4 h-4 text-[#1638BF]" />
+              <span>Ventas Realizadas</span>
+            </button>
           </div>
 
           {/* Grid de Productos */}
@@ -545,6 +614,113 @@ export const PosScreen: React.FC<PosScreenProps> = ({ onVentaCompletada }) => {
         </div>
 
       </div>
+
+      {/* ================= MODAL DE VENTAS REALIZADAS (HISTORIAL Y COMPROBANTES) ================= */}
+      {showHistoryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 animate-fadeIn">
+          <div className="bg-white text-slate-900 w-full max-w-2xl rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-4 relative max-h-[85vh] flex flex-col">
+            
+            {/* Header del Modal */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 text-[#1638BF] rounded-2xl flex items-center justify-center">
+                  <Receipt className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900">
+                    Ventas Realizadas en Minimarket
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Historial de tickets cobrados y detalle de artículos
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowHistoryModal(false)}
+                className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+                title="Cerrar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Lista de Ventas */}
+            <div className="flex-1 overflow-y-auto no-scrollbar space-y-3 pr-1">
+              {loadingHistory ? (
+                <div className="text-center py-12 text-xs font-bold text-slate-400">
+                  Cargando ventas desde la base de datos...
+                </div>
+              ) : historialVentas.length === 0 ? (
+                <div className="text-center py-12 text-slate-400 text-xs">
+                  <ShoppingBag className="w-10 h-10 mx-auto mb-2 text-slate-300" />
+                  No hay ventas registradas aún.
+                </div>
+              ) : (
+                historialVentas.map((v) => (
+                  <div 
+                    key={v.id} 
+                    className="border border-slate-200/80 rounded-2xl p-4 bg-slate-50 hover:bg-white hover:border-blue-400 transition shadow-xs space-y-2.5"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-black text-sm text-[#1638BF] bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">
+                          {v.numeroComprobante}
+                        </span>
+                        <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-800">
+                          {v.metodoPago}
+                        </span>
+                      </div>
+                      <span className="text-base font-black text-slate-950">
+                        S/ {v.total.toFixed(2)}
+                      </span>
+                    </div>
+
+                    {/* Fecha y Hora */}
+                    <div className="flex items-center gap-3 text-[11px] text-slate-500 font-medium">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                        {new Date(v.fechaHora).toLocaleDateString('es-PE')}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                        {new Date(v.fechaHora).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+
+                    {/* Detalle de Artículos */}
+                    {v.items && v.items.length > 0 && (
+                      <div className="border-t border-slate-200/60 pt-2 space-y-1">
+                        {v.items.map((it, idx) => (
+                          <div key={idx} className="flex justify-between text-xs text-slate-700">
+                            <span className="font-medium">
+                              <span className="font-bold text-slate-900">{it.cantidad}x</span> {it.nombre}
+                            </span>
+                            <span className="font-semibold text-slate-900">
+                              S/ {it.subtotal.toFixed(2)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Footer Modal */}
+            <div className="pt-2 border-t border-slate-100 flex justify-between items-center text-xs text-slate-500 font-medium">
+              <span>Total registradas: {historialVentas.length} tickets</span>
+              <button
+                onClick={() => setShowHistoryModal(false)}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-4 py-2 rounded-xl transition cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );

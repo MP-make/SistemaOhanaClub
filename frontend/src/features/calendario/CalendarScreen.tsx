@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowLeft, ArrowRight, Plus, Home, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Plus, Home, Sparkles, Calendar } from 'lucide-react';
 import { Reserva, ZonaTipo } from '../../types';
 
 interface CalendarScreenProps {
@@ -262,6 +262,10 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
     }
   };
 
+  const handleGoToday = () => {
+    setCurrentDate(new Date());
+  };
+
   // Generación de todos los días del mes actual para el carrusel de rueda
   const getMonthDays = (yr: number, mth: number) => {
     const daysInMonth = new Date(yr, mth + 1, 0).getDate();
@@ -336,7 +340,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
         <div className="flex-1 bg-white rounded-t-[32px] px-4 pt-5 pb-24 flex flex-col justify-between shadow-xs border-t border-slate-100">
           <div>
             
-            {/* Header: Selector de Mes con botones circulares */}
+            {/* Header: Selector de Mes con botones circulares y botón Hoy */}
             <div className="flex items-center justify-between px-2 mb-4">
               <button 
                 onClick={handlePrevMonth}
@@ -346,9 +350,22 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
                 <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
               </button>
               
-              <h2 className="text-[17px] font-black text-[#1E3A8A] tracking-tight">
-                {MONTH_NAMES[month]} {year}
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-[17px] font-black text-[#1E3A8A] tracking-tight">
+                  {MONTH_NAMES[month]} {year}
+                </h2>
+                <button
+                  onClick={handleGoToday}
+                  className={`px-2.5 py-0.5 rounded-full text-[11px] font-black border transition active:scale-95 cursor-pointer ${
+                    selectedDateStr === todayStr
+                      ? 'bg-blue-100 text-[#1638BF] border-blue-400'
+                      : 'bg-white text-slate-600 border-slate-300'
+                  }`}
+                  title="Ir al día de hoy"
+                >
+                  Hoy
+                </button>
+              </div>
               
               <button 
                 onClick={handleNextMonth}
@@ -441,8 +458,17 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
                               onClick={() => onSelectReserva && onSelectReserva(canchaItem)}
                               className="bg-[#E0E7FF] border border-[#818CF8] rounded-md p-1.5 shadow-xs cursor-pointer hover:bg-blue-100 transition active:scale-[0.98] text-left"
                             >
-                              <div className="text-[10px] font-bold text-[#3730A3] leading-none">
-                                {canchaItem.horaInicio} - {canchaItem.horaFin}
+                              <div className="flex items-center justify-between text-[10px] font-bold text-[#3730A3] leading-none">
+                                <span>{canchaItem.horaInicio} - {canchaItem.horaFin}</span>
+                                {canchaItem.saldoPendiente > 0 ? (
+                                  <span className="text-[8.5px] bg-rose-100 text-rose-700 px-1 py-0.2 rounded font-black">
+                                    -S/{canchaItem.saldoPendiente}
+                                  </span>
+                                ) : (
+                                  <span className="text-[8.5px] bg-emerald-100 text-emerald-800 px-1 py-0.2 rounded font-bold">
+                                    Pagado
+                                  </span>
+                                )}
                               </div>
                               <div className="text-[10.5px] font-black text-slate-900 leading-tight mt-0.5 truncate">
                                 {canchaItem.tipoEvento}
@@ -486,8 +512,17 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
                               onClick={() => onSelectReserva && onSelectReserva(eventoItem)}
                               className="bg-[#FFEDD5] border border-[#FB923C] rounded-md p-1.5 shadow-xs cursor-pointer hover:bg-orange-100 transition active:scale-[0.98] text-left"
                             >
-                              <div className="text-[10px] font-bold text-[#C2410C] leading-none">
-                                {eventoItem.horaInicio} - {eventoItem.horaFin}
+                              <div className="flex items-center justify-between text-[10px] font-bold text-[#C2410C] leading-none">
+                                <span>{eventoItem.horaInicio} - {eventoItem.horaFin}</span>
+                                {eventoItem.saldoPendiente > 0 ? (
+                                   <span className="text-[8.5px] bg-rose-100 text-rose-700 px-1 py-0.2 rounded font-black">
+                                     -S/{eventoItem.saldoPendiente}
+                                   </span>
+                                ) : (
+                                   <span className="text-[8.5px] bg-emerald-100 text-emerald-800 px-1 py-0.2 rounded font-bold">
+                                     Pagado
+                                   </span>
+                                )}
                               </div>
                               <div className="text-[10.5px] font-black text-slate-900 leading-tight mt-0.5 truncate">
                                 {eventoItem.tipoEvento}
@@ -544,7 +579,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
         <div className="bg-white rounded-2xl p-5 shadow-xs border border-slate-200/80 flex flex-col lg:flex-row items-center justify-between gap-4">
           
           {/* Navegación de Mes */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <button 
               onClick={handlePrevMonth}
               className="w-9 h-9 rounded-xl border border-slate-300 flex items-center justify-center text-slate-700 hover:bg-slate-50 transition cursor-pointer"
@@ -552,7 +587,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
             >
               <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
             </button>
-            <h2 className="text-xl font-black text-slate-900 tracking-tight min-w-[160px] text-center">
+            <h2 className="text-xl font-black text-slate-900 tracking-tight min-w-[150px] text-center">
               {MONTH_NAMES[month]} {year}
             </h2>
             <button 
@@ -561,6 +596,20 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
               title="Siguiente mes"
             >
               <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+            </button>
+
+            {/* Botón HOY para ir a la fecha actual */}
+            <button
+              onClick={handleGoToday}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer active:scale-95 flex items-center gap-1.5 border ${
+                selectedDateStr === todayStr
+                  ? 'bg-blue-50 text-[#1638BF] border-blue-300 shadow-2xs'
+                  : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+              }`}
+              title="Ir al día de hoy"
+            >
+              <Calendar className="w-3.5 h-3.5 text-[#1638BF]" />
+              <span>Hoy</span>
             </button>
           </div>
 
@@ -666,9 +715,20 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
                                   {canchaItem.clienteNombre} {canchaItem.clienteTelefono ? `(${canchaItem.clienteTelefono})` : ''}
                                 </div>
                               </div>
-                              <span className="text-[11px] font-bold bg-[#D8F600] text-slate-950 px-2 py-0.5 rounded">
-                                S/ {canchaItem.montoTotal}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                {canchaItem.saldoPendiente > 0 ? (
+                                  <span className="text-[10.5px] font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded border border-rose-200">
+                                    Resta S/ {canchaItem.saldoPendiente.toFixed(2)}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10.5px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200">
+                                    ✓ Pagada
+                                  </span>
+                                )}
+                                <span className="text-[11px] font-black bg-[#D8F600] text-slate-950 px-2 py-0.5 rounded">
+                                  Total: S/ {canchaItem.montoTotal}
+                                </span>
+                              </div>
                             </div>
                           ) : (
                             <button
@@ -700,9 +760,20 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
                                   {eventoItem.clienteNombre}
                                 </div>
                               </div>
-                              <span className="text-[11px] font-bold bg-[#FF6A00] text-white px-2 py-0.5 rounded">
-                                S/ {eventoItem.montoTotal}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                {eventoItem.saldoPendiente > 0 ? (
+                                  <span className="text-[10.5px] font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded border border-rose-200">
+                                    Resta S/ {eventoItem.saldoPendiente.toFixed(2)}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10.5px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200">
+                                    ✓ Pagada
+                                  </span>
+                                )}
+                                <span className="text-[11px] font-bold bg-[#FF6A00] text-white px-2 py-0.5 rounded">
+                                  Total: S/ {eventoItem.montoTotal}
+                                </span>
+                              </div>
                             </div>
                           ) : (
                             <button

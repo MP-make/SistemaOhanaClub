@@ -7,7 +7,8 @@ import {
   TarifaCalculation,
   ZonaTipo,
   TarifaTipo,
-  MetodoPago
+  MetodoPago,
+  AperturaCaja
 } from '../types';
 import { supabaseApi, isSupabaseConfigured } from './supabaseClient';
 
@@ -226,6 +227,14 @@ class StorageService {
   saveVentas(ventas: Venta[]): void {
     this.set('ventas', ventas);
   }
+
+  getAperturaCaja(): AperturaCaja | null {
+    return this.get<AperturaCaja | null>('apertura_caja_activa', null);
+  }
+
+  saveAperturaCaja(apertura: AperturaCaja | null): void {
+    this.set('apertura_caja_activa', apertura);
+  }
 }
 
 export const localStore = new StorageService();
@@ -422,6 +431,65 @@ export const apiService = {
     const updated = [nuevaReserva, ...existing];
     localStore.saveReservas(updated);
     return nuevaReserva;
+  },
+
+  async updateReserva(id: string, updates: Partial<Reserva>): Promise<Reserva> {
+    if (isSupabaseConfigured()) {
+      try {
+        await supabaseApi.updateReserva(id, updates);
+      } catch (e) {
+        console.warn('Error al actualizar reserva en Supabase:', e);
+      }
+    }
+
+    const reservas = localStore.getReservas();
+    const idx = reservas.findIndex(r => r.id === id);
+    if (idx !== -1) {
+      reservas[idx] = { ...reservas[idx], ...updates };
+      localStore.saveReservas(reservas);
+      return reservas[idx];
+    }
+    throw new Error('Reserva no encontrada');
+  },
+
+  async cobrarSaldoReserva(id: string, metodoPago: MetodoPago = 'EFECTIVO'): Promise<Reserva> {
+    const reservas = localStore.getReservas();
+    const r = reservas.find(item => item.id === id);
+    if (!r) throw new Error('Reserva no encontrada');
+
+    const nuevoAdelanto = r.montoTotal;
+    const nuevoSaldo = 0;
+    const nuevoEstado = 'PAGADA' as const;
+
+    return this.updateReserva(id, {
+      adelanto: nuevoAdelanto,
+      saldoPendiente: nuevoSaldo,
+      estado: nuevoEstado,
+      metodoPago
+    });
+  },
+
+  async prorrogarReserva(id: string, minutos: number = 15): Promise<Reserva> {
+    const reservas = localStore.getReservas();
+    const r = reservas.find(item => item.id === id);
+    if (!r) throw new Error('Reserva no encontrada');
+
+    // Desplazar 15 minutos en el horario de inicio y fin
+    const addMinutes = (timeStr: string, delta: number) => {
+      const [h, m] = timeStr.split(':').map(Number);
+      const totalMin = Math.max(0, h * 60 + m + delta);
+      const newH = Math.floor(totalMin / 60) % 24;
+      const newM = totalMin % 60;
+      return `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
+    };
+
+    const newStart = addMinutes(r.horaInicio, minutos);
+    const newEnd = addMinutes(r.horaFin, minutos);
+
+    return this.updateReserva(id, {
+      horaInicio: newStart,
+      horaFin: newEnd
+    });
   },
 
   // 2. POS & Inventario
@@ -680,25 +748,157 @@ export const apiService = {
     return nuevaVenta;
   },
 
+  async getVentas(): Promise<Venta[]> {
+    if (isSupabaseConfigured()) {
+      try {
+        const sbVentas = await supabaseApi.getVentas();
+        if (sbVentas && Array.isArray(sbVentas)) {
+          const mapped: Venta[] = sbVentas.map((v: any) => ({
+            id: v.id,
+            numeroComprobante: v.numero_comprobante || `REC-${v.id.slice(-5)}`,
+            fechaHora: v.fecha_hora,
+            total: Number(v.total) || 0,
+            metodoPago: (v.metodo_pago === 'YAPE_PLIN' ? 'YAPE' : v.metodo_pago) as MetodoPago,
+            items: (v.detalle_ventas || []).map((d: any) => ({
+              productoId: d.producto_id,
+              nombre: d.productos?.nombre ? `${d.productos.nombre} ${d.productos.presentacion || ''}`.trim() : 'Producto',
+              cantidad: Number(d.cantidad) || 1,
+              precioUnitario: Number(d.precio_unitario) || 0,
+              subtotal: Number(d.subtotal) || 0
+            }))
+          }));
+          localStore.saveVentas(mapped);
+          return mapped;
+        }
+      } catch (e) {
+        console.warn('Fallo getVentas en Supabase, usando local:', e);
+      }
+    }
+    return localStore.getVentas();
+  },
+
   // 3. Cierre de Caja y Dashboard
-  getCierreCaja(periodo: string = 'Mayo 2026'): CierreCaja {
+  async getCierreCaja(periodo: string = 'Mayo 2026'): Promise<CierreCaja & { totalReservasCount: number; totalVentasCount: number; ticketPromedio: number }> {
+    const reservas = await this.getReservas();
+    const ventas = await this.getVentas();
+
+    // Desglose de ingresos por Alquileres (Canchas / Eventos)
+    // Se toma el adelanto cobrado de reservas confirmadas o pagadas
+    const alquileres = {
+      efectivo: 0,
+      yapePlin: 0,
+      transferencia: 0,
+      total: 0
+    };
+
+    reservas.forEach(r => {
+      if (r.estado !== 'CANCELADA') {
+        const monto = Number(r.adelanto) || 0;
+        const metodo = r.metodoPago || 'EFECTIVO';
+        if (metodo === 'YAPE' || metodo === 'PLIN' || metodo === 'YAPE_PLIN') {
+          alquileres.yapePlin += monto;
+        } else if (metodo === 'TRANSFERENCIA') {
+          alquileres.transferencia += monto;
+        } else {
+          alquileres.efectivo += monto;
+        }
+        alquileres.total += monto;
+      }
+    });
+
+    // Desglose de ingresos por Minimarket (POS)
+    const minimarket = {
+      efectivo: 0,
+      yapePlin: 0,
+      transferencia: 0,
+      total: 0
+    };
+
+    ventas.forEach(v => {
+      const monto = Number(v.total) || 0;
+      const metodo = v.metodoPago || 'EFECTIVO';
+      if (metodo === 'YAPE' || metodo === 'PLIN' || metodo === 'YAPE_PLIN') {
+        minimarket.yapePlin += monto;
+      } else if (metodo === 'TRANSFERENCIA') {
+        minimarket.transferencia += monto;
+      } else {
+        minimarket.efectivo += monto;
+      }
+      minimarket.total += monto;
+    });
+
+    // Redondear a 2 decimales
+    alquileres.efectivo = Math.round(alquileres.efectivo * 100) / 100;
+    alquileres.yapePlin = Math.round(alquileres.yapePlin * 100) / 100;
+    alquileres.transferencia = Math.round(alquileres.transferencia * 100) / 100;
+    alquileres.total = Math.round(alquileres.total * 100) / 100;
+
+    minimarket.efectivo = Math.round(minimarket.efectivo * 100) / 100;
+    minimarket.yapePlin = Math.round(minimarket.yapePlin * 100) / 100;
+    minimarket.transferencia = Math.round(minimarket.transferencia * 100) / 100;
+    minimarket.total = Math.round(minimarket.total * 100) / 100;
+
+    const totalGeneral = Math.round((alquileres.total + minimarket.total) * 100) / 100;
+    const totalReservasCount = reservas.filter(r => r.estado !== 'CANCELADA').length;
+    const totalVentasCount = ventas.length;
+    const ticketPromedio = totalVentasCount > 0 ? Math.round((minimarket.total / totalVentasCount) * 100) / 100 : 0;
+    const aperturaActual = this.getAperturaActual();
+
     return {
       periodo,
-      fechaConsulta: '2026-05-23',
-      alquileres: {
-        efectivo: 2120.00,
-        yapePlin: 1520.00,
-        transferencia: 620.00,
-        total: 4260.00
-      },
-      minimarket: {
-        efectivo: 1120.00,
-        yapePlin: 725.00,
-        transferencia: 300.00,
-        total: 2145.00
-      },
-      totalGeneral: 6405.00
+      fechaConsulta: new Date().toISOString().slice(0, 10),
+      alquileres,
+      minimarket,
+      totalGeneral,
+      totalReservasCount,
+      totalVentasCount,
+      ticketPromedio,
+      aperturaActual
     };
+  },
+
+  getAperturaActual(): AperturaCaja | null {
+    return localStore.getAperturaCaja();
+  },
+
+  async abrirCaja(montoInicial: number, abiertaPor?: string): Promise<AperturaCaja> {
+    const now = new Date();
+    const fecha = now.toISOString().slice(0, 10);
+    const horaApertura = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    const nuevaApertura: AperturaCaja = {
+      id: `ape-${Date.now()}`,
+      fecha,
+      horaApertura,
+      montoInicial: Number(montoInicial) || 0,
+      abiertaPor: abiertaPor || 'Staff Turno',
+      estado: 'ABIERTA'
+    };
+
+    localStore.saveAperturaCaja(nuevaApertura);
+    return nuevaApertura;
+  },
+
+  async cerrarCajaTurno(montoCierreEfectivo: number, observaciones?: string, cerradaPor?: string): Promise<AperturaCaja> {
+    const actual = this.getAperturaActual();
+    const now = new Date();
+    const horaCierre = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const aperturaCerrada: AperturaCaja = {
+      id: actual?.id || `ape-${Date.now()}`,
+      fecha: actual?.fecha || now.toISOString().slice(0, 10),
+      horaApertura: actual?.horaApertura || '08:00',
+      montoInicial: actual?.montoInicial || 0,
+      abiertaPor: actual?.abiertaPor || 'Staff Turno',
+      estado: 'CERRADA',
+      montoCierreEfectivo: Number(montoCierreEfectivo) || 0,
+      horaCierre,
+      cerradaPor: cerradaPor || 'Staff Turno',
+      observaciones: observaciones || ''
+    };
+
+    localStore.saveAperturaCaja(aperturaCerrada);
+    return aperturaCerrada;
   },
 
   getDashboardMetrics(): DashboardMetrics {

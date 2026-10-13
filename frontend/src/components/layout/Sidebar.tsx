@@ -5,6 +5,7 @@ import {
   ShoppingCart, 
   Package, 
   Archive, 
+  BarChart3,
   CalendarPlus, 
   LogOut, 
   ShieldCheck,
@@ -59,9 +60,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     { 
       id: 'caja' as ScreenType, 
-      label: 'Cierre de Caja y Reportes', 
+      label: 'Cierre de Caja', 
       icon: Archive,
       badge: null
+    },
+    { 
+      id: 'reportes' as ScreenType, 
+      label: 'Reportes y Finanzas', 
+      icon: BarChart3,
+      badge: 'Nuevo'
     },
   ];
 
@@ -147,8 +154,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           const Icon = item.icon;
           const isActive = 
             currentScreen === item.id || 
-            (item.id === 'calendario' && currentScreen === 'nueva_reserva') ||
-            (item.id === 'caja' && currentScreen === 'reportes');
+            (item.id === 'calendario' && currentScreen === 'nueva_reserva');
 
           return (
             <button
