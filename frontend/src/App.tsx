@@ -169,7 +169,7 @@ export function App() {
             <div className="flex items-center gap-2 max-w-7xl mx-auto w-full text-xs font-black">
               <WifiOff className="w-4 h-4 text-slate-950 shrink-0 animate-pulse" />
               <span>
-                ⚠️ Modo Offline Activo (Mitigación R05): Sin conexión Wi-Fi/red. Operando en almacenamiento local seguro.
+                Modo Offline Activo (Mitigación R05): Sin conexión Wi-Fi/red. Operando en almacenamiento local seguro.
               </span>
             </div>
           </aside>
@@ -202,7 +202,7 @@ export function App() {
             <div className="flex items-center gap-2.5 max-w-7xl mx-auto w-full text-xs md:text-sm font-black">
               <WifiOff className="w-4 h-4 text-slate-950 shrink-0 animate-pulse" />
               <span>
-                ⚠️ Modo Offline Activo (Mitigación R05): Sin conexión Wi-Fi/red. Operando en almacenamiento local seguro; las operaciones se sincronizarán al reconectar.
+                Modo Offline Activo (Mitigación R05): Sin conexión Wi-Fi/red. Operando en almacenamiento local seguro; las operaciones se sincronizarán al reconectar.
               </span>
             </div>
           </aside>
@@ -216,7 +216,7 @@ export function App() {
             <div className="flex items-center gap-2.5 max-w-7xl mx-auto w-full text-xs md:text-sm font-black">
               <Wifi className="w-4 h-4 text-white shrink-0" />
               <span>
-                ✅ Conexión a internet restablecida. El sistema Ohana Club vuelve a estar en línea.
+                Conexión a internet restablecida. El sistema Ohana Club vuelve a estar en línea.
               </span>
             </div>
           </aside>
@@ -232,8 +232,8 @@ export function App() {
           onReservaActualizada={loadReservas}
         />
 
-        {/* Contenido Principal con Scroll Suave */}
-        <main className="flex-1 flex flex-col overflow-y-auto no-scrollbar">
+        {/* Contenido Principal */}
+        <main className={`flex-1 flex flex-col no-scrollbar ${currentScreen === 'pos' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
           {currentScreen === 'dashboard' && (
             <DashboardScreen
               onNavigate={navigateTo}

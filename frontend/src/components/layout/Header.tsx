@@ -466,7 +466,7 @@ export const Header: React.FC<HeaderProps> = ({
                 className="w-full bg-white/10 hover:bg-white/20 active:scale-[0.98] text-white font-bold text-xs py-3 px-4 rounded-2xl border border-white/20 flex items-center justify-between transition cursor-pointer"
               >
                 <div className="flex items-center gap-2.5">
-                  <span className="text-sm">📊</span>
+                  <span className="text-xs font-black text-[#D8F600]">REP</span>
                   <span className="tracking-wide text-xs">Centro de Reportes</span>
                 </div>
                 <span className="text-xs text-[#D8F600] font-black">Ver</span>
@@ -574,7 +574,7 @@ export const Header: React.FC<HeaderProps> = ({
                           ? 'bg-amber-100 text-amber-700'
                           : 'bg-blue-100 text-blue-700'
                       }`}>
-                        {n.zona === 'CANCHA' ? '⚽' : '🎉'}
+                        {n.zona === 'CANCHA' ? 'CANCHA' : 'EVENTOS'}
                       </div>
                       <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full ring-2 ring-white flex items-center justify-center text-[8px] font-black ${
                         n.tipo === 'DEMORADA' ? 'bg-rose-500 text-white' : n.tipo === 'EN_CURSO' ? 'bg-amber-500 text-white' : 'bg-blue-600 text-white'
