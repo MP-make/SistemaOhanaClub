@@ -16,6 +16,22 @@ Permite gestionar reservas de canchas y eventos, ventas mediante un punto de ven
 - Python
 - FastAPI
 
+## API
+
+La API del backend está construida con FastAPI.
+
+Documentación interactiva disponible en:
+
+http://localhost:8000/docs
+
+Principales módulos:
+- Autenticación
+- Reservas
+- Eventos
+- Inventario
+- Punto de venta
+- Cierre de caja
+
 ### Base de datos
 - Supabase
 - PostgreSQL
