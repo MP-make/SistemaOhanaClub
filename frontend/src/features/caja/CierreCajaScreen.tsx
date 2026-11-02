@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import jsPDF from 'jspdf';
+import * as XLSX from 'xlsx';
 import { 
   ChevronDown, 
   FileText, 
@@ -119,7 +121,59 @@ export const CierreCajaScreen: React.FC = () => {
     { label: '16-20', alquileres: Math.min(100, Math.round(cierre.alquileres.total * 0.10)), minimarket: Math.min(100, Math.round(cierre.minimarket.total * 0.18)) },
     { label: '21-25', alquileres: Math.min(100, Math.round(cierre.alquileres.total * 0.18)), minimarket: Math.min(100, Math.round(cierre.minimarket.total * 0.12)) },
     { label: '26-31', alquileres: Math.min(100, Math.round(cierre.alquileres.total * 0.12)), minimarket: Math.min(100, Math.round(cierre.minimarket.total * 0.10)) },
+    
   ];
+
+  const exportarPDF = () => {
+  const doc = new jsPDF();
+
+  doc.setFontSize(18);
+  doc.text('OHANA CLUB - REPORTE MENSUAL', 20, 20);
+
+  doc.setFontSize(12);
+  doc.text(`Periodo: ${periodo}`, 20, 32);
+  doc.text(`Fecha: ${cierre.fechaConsulta}`, 20, 40);
+
+  doc.text(`Ingresos por Alquileres: S/ ${cierre.alquileres.total.toFixed(2)}`, 20, 55);
+  doc.text(`Ingresos por Minimarket: S/ ${cierre.minimarket.total.toFixed(2)}`, 20, 65);
+
+  doc.setFontSize(14);
+  doc.text(`TOTAL RECAUDADO: S/ ${cierre.totalGeneral.toFixed(2)}`, 20, 82);
+
+  doc.setFontSize(11);
+  doc.text(`Reservas: ${cierre.totalReservasCount}`, 20, 95);
+  doc.text(`Ventas POS: ${cierre.totalVentasCount}`, 20, 103);
+  doc.text(`Ticket promedio: S/ ${cierre.ticketPromedio.toFixed(2)}`, 20, 111);
+
+  doc.save(`reporte-${periodo.replace(' ', '-')}.pdf`);
+};
+
+const exportarExcel = () => {
+  const datos = [
+    ['OHANA CLUB - REPORTE MENSUAL'],
+    ['Periodo', periodo],
+    ['Fecha', cierre.fechaConsulta],
+    [],
+    ['Concepto', 'Monto'],
+    ['Alquileres', cierre.alquileres.total],
+    ['Minimarket', cierre.minimarket.total],
+    ['Total General', cierre.totalGeneral],
+    [],
+    ['Reservas', cierre.totalReservasCount],
+    ['Ventas POS', cierre.totalVentasCount],
+    ['Ticket Promedio', cierre.ticketPromedio],
+  ];
+
+  const hoja = XLSX.utils.aoa_to_sheet(datos);
+  const libro = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(libro, hoja, 'Reporte Mensual');
+
+  XLSX.writeFile(
+    libro,
+    `reporte-${periodo.replace(' ', '-')}.xlsx`
+  );
+};
 
   return (
     <div className="flex-1 flex flex-col bg-[#1638BF] md:bg-slate-50 select-none pb-24 md:pb-8">
@@ -308,12 +362,19 @@ export const CierreCajaScreen: React.FC = () => {
           {/* Botones Móviles de Cierre y Reporte */}
           <div className="pt-2 space-y-2">
             <button
-              onClick={() => setShowPdfPreview(true)}
+              onClick={exportarPDF}
               className="w-full bg-[#2442E7] hover:bg-blue-700 active:scale-[0.98] text-white font-bold text-[14.5px] py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
             >
               <FileText className="w-4 h-4 text-[#D8F600]" />
               <span>Generar comprobante / PDF</span>
             </button>
+
+            <button
+              onClick={exportarExcel}
+              className="w-full bg-green-600 hover:bg-green-700 active:scale-[0.98] text-white font-bold text-[14.5px] py-3 rounded-xl shadow-md transition">
+              Exportar Excel
+            </button>
+
           </div>
 
         </div>
